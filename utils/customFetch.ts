@@ -2,8 +2,16 @@ import axios from "axios"
 import { getToken } from "./auth"
 import { notifyUnauthorized } from "./authEvents"
 
-// const BASE_URL = "https://api.inprn.com/api/v1"
-export const BASE_URL = "http://192.168.1.81:5000/api/v1"
+// Set per environment via .env files (EXPO_PUBLIC_ vars are inlined into the
+// bundle at build time, not read at runtime — see .env.production for the
+// real backend, and .env.local (gitignored, not committed) for your own
+// laptop's LAN IP when running `expo start` for local dev).
+if (!process.env.EXPO_PUBLIC_API_URL) {
+    throw new Error(
+        "EXPO_PUBLIC_API_URL is not set. Add it to .env.local (LAN IP for local dev) — .env.production already has the real backend URL for release builds."
+    )
+}
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL
 
 const customFetch = axios.create({ baseURL: BASE_URL })
 
