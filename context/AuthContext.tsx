@@ -6,7 +6,11 @@ import {
 } from "react";
 
 import * as SecureStore from "expo-secure-store";
-import { clearSession, getStoredUser, getToken, saveSession } from "../utils/auth";
+import { router } from "expo-router";
+import Toast from "react-native-toast-message";
+import { clearSession, getStoredUser, getToken, saveSession, saveUser } from "../utils/auth";
+import { setUnauthorizedHandler } from "../utils/authEvents";
+import { registerPushTokenWithServer } from "../utils/pushNotifications";
 import type { User } from "../utils/types";
 
 type AuthContextType = {
@@ -19,6 +23,7 @@ type AuthContextType = {
     user: User
   ) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (patch: Partial<User>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -52,6 +57,12 @@ export function AuthProvider({
     loadSession();
   }, []);
 
+  useEffect(() => {
+    if (accessToken) {
+      registerPushTokenWithServer();
+    }
+  }, [accessToken]);
+
   async function login(
     token: string,
     refreshToken: string,
@@ -72,6 +83,26 @@ export function AuthProvider({
     setUser(null);
   }
 
+  // Merges a partial update (e.g. from the edit-profile form) into the
+  // cached user so the UI reflects it immediately, without a re-login.
+  async function updateUser(patch: Partial<User>) {
+    setUser(current => {
+      if (!current) return current;
+      const next = { ...current, ...patch };
+      saveUser(next);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      Toast.show({ type: "error", text1: "Session expired", text2: "Please log in again." });
+      logout().then(() => router.replace("/login"));
+    });
+
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -80,6 +111,7 @@ export function AuthProvider({
         loading,
         login,
         logout,
+        updateUser,
       }}
     >
       {children}

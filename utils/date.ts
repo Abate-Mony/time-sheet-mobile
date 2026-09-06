@@ -12,6 +12,17 @@ export function formatDuration(minutes: number | null | undefined): string {
     return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+// For a future point in time rather than an elapsed/worked span (e.g. "starts
+// in…") — those can legitimately be days out, where formatDuration's "72h 0m"
+// stops being readable. Anything under 24h still reads as hours/minutes.
+export function formatTimeUntil(minutes: number | null | undefined): string {
+    const total = Math.max(Math.round(minutes ?? 0), 0)
+    const days = Math.floor(total / 1440)
+    if (days === 0) return formatDuration(total)
+    const remainingHours = Math.floor((total % 1440) / 60)
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`
+}
+
 export function formatSecondsAsClock(seconds: number) {
     const total = Math.max(Math.round(seconds), 0)
     const h = Math.floor(total / 3600)

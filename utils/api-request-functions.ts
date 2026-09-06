@@ -4,6 +4,13 @@ import { queryClient } from "../lib/queryClient";
 
 import customFetch from "./customFetch";
 import { getCurrentPosition } from "./getPosition";
+import type {
+  EditProfileForm,
+  NotificationPreferences,
+  TimesheetPeriodType,
+  TimesheetSummaryResponse,
+  User,
+} from "./types";
 
 const showSuccess = (message: string) => {
   Toast.show({
@@ -113,6 +120,79 @@ export const changeWorkerJobStaus = async (
       message,
     };
   }
+};
+
+export const claimOpenShift = async (jobId: string): Promise<boolean> => {
+  try {
+    const { data } = await customFetch.post(`/workers/open-shifts/${jobId}/claim`);
+
+    showSuccess(
+      data?.needsApproval
+        ? "Claim sent — your manager needs to approve it"
+        : "Shift picked up successfully"
+    );
+
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    await queryClient.invalidateQueries({ queryKey: ["open-shifts"] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const updateWorkerProfile = async (
+  profile: EditProfileForm
+): Promise<User | null> => {
+  try {
+    const { data } = await customFetch.patch<{ user: User }>("/users/current-user", profile);
+    showSuccess("Profile updated successfully");
+    return data.user;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return null;
+  }
+};
+
+export const getNotificationPreferences = async () => {
+  const { data } = await customFetch.get<{
+    success: boolean;
+    preferences: NotificationPreferences;
+  }>("/notification-preferences/me");
+  return data;
+};
+
+export type UpdateNotificationPreferencesPayload = Partial<
+  Pick<NotificationPreferences, "emailEnabled" | "pushEnabled" | "inAppEnabled">
+> & {
+  events?: Partial<Record<string, Partial<Record<"email" | "push" | "inApp", boolean>>>>;
+};
+
+export const updateNotificationPreferences = async (
+  preferences: UpdateNotificationPreferencesPayload
+): Promise<boolean> => {
+  try {
+    await customFetch.patch("/notification-preferences/me", preferences);
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const getTimesheetSummary = async ({
+  period,
+  start,
+  end,
+}: {
+  period: TimesheetPeriodType;
+  start: string;
+  end: string;
+}) => {
+  const { data } = await customFetch.get<{ summary: TimesheetSummaryResponse }>("/timesheets/", {
+    params: { period, startDate: start, endDate: end },
+  });
+  return data;
 };
 
 export const startWorkerBreak = async (

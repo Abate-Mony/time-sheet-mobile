@@ -1,13 +1,18 @@
+import { workerDashboardstats } from "@/app/(tabs)/profile"
 import { useAuth } from "@/context/AuthContext"
+import { useQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
 import isoWeek from "dayjs/plugin/isoWeek"
 import { useRouter } from "expo-router"
-import { AlertCircle, Bell, Briefcase, ChevronRight, Clock, Timer, TrendingUp } from "lucide-react-native"
+import { AlertCircle, Calendar, ChevronRight, Clock, MapPin, Timer, Zap } from "lucide-react-native"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import customFetch from "../../utils/customFetch"
+import { formatDate } from "../../utils/date"
 import type { MyJobsResponse, WorkerJob } from "../../utils/types"
+
+const UPCOMING_SHIFTS_LIMIT = 5
 
 dayjs.extend(isoWeek)
 
@@ -22,6 +27,9 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
+
+  const { data: stats } = useQuery(workerDashboardstats())
+  const monthly = stats?.monthly
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +76,14 @@ export default function DashboardScreen() {
   }, [jobs])
 
   const hoursThisWeek = useMemo(() => weekDays.reduce((sum, d) => sum + d.hours, 0), [weekDays])
+
+  const upcomingShifts = useMemo(() => {
+    const today = dayjs().startOf("day")
+    return jobs
+      .filter(j => !["completed", "declined", "cancelled"].includes(j.status) && !dayjs(j.date).isBefore(today, "day"))
+      .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
+      .slice(0, UPCOMING_SHIFTS_LIMIT)
+  }, [jobs])
 
   const hoursThisMonth = useMemo(() => {
     const monthStart = dayjs().startOf("month")
@@ -119,7 +135,7 @@ export default function DashboardScreen() {
         ) : null}
 
         {/* Header */}
-        <View style={{ backgroundColor: "#1E3A5F", borderRadius: 24, padding: 20 }}>
+        {/* <View style={{ backgroundColor: "#1E3A5F", borderRadius: 24, padding: 20 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View
@@ -167,31 +183,58 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
 
-          {/* Stats row */}
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            {[
-              { label: "This Week", value: `${hoursThisWeek}h`, icon: Clock },
-              { label: "This Month", value: `${hoursThisMonth}h`, icon: TrendingUp },
-              { label: "Jobs Done", value: `${jobsCompleted}`, icon: Briefcase },
-            ].map(s => (
-              <View
-                key={s.label}
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{s.value}</Text>
-                <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2, fontWeight: "500" }}>
-                  {s.label}
+     
+        </View> */}
+
+        {/* Earnings */}
+        {monthly ? (
+          <View style={{ backgroundColor: "#1E3A5F", borderRadius: 18, padding: 20, overflow: "hidden" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.55)", letterSpacing: 0.7 }}>
+                  EARNINGS THIS MONTH
+                </Text>
+                <Text style={{ marginTop: 4, fontSize: 30, fontWeight: "800", color: "#FFFFFF" }}>
+                  £{monthly.earnings}
                 </Text>
               </View>
-            ))}
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255,255,255,0.10)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Zap size={19} color="#93C5FD" />
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {[
+                { label: "Hours", value: `${monthly.hoursWorked?.toFixed(1)}h` },
+                { label: "Jobs", value: `${stats?.jobStats.completed ?? 0}` },
+                { label: "£/hr avg", value: `${monthly.averagePayRate || 0}` },
+              ].map(s => (
+                <View
+                  key={s.label}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(255,255,255,0.10)",
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFFFFF" }}>{s.value}</Text>
+                  <Text style={{ marginTop: 3, fontSize: 10, color: "rgba(255,255,255,0.45)" }}>{s.label}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Active job banner */}
         {activeJob ? (
@@ -304,6 +347,75 @@ export default function DashboardScreen() {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* Upcoming shifts */}
+        <View>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#1E293B" }}>Upcoming Shifts</Text>
+            <Pressable onPress={() => router.push("/(tabs)/jobs")} hitSlop={8}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#1E3A5F" }}>View all</Text>
+            </Pressable>
+          </View>
+
+          {upcomingShifts.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                padding: 20,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 13, color: "#94A3B8" }}>No upcoming shifts scheduled</Text>
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {upcomingShifts.map(job => (
+                <Pressable
+                  key={job._id}
+                  onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: job._id } })}
+                  style={({ pressed }) => ({
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "#E2E8F0",
+                    padding: 14,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: "#0F172A" }} numberOfLines={1}>
+                      {job.title}
+                    </Text>
+                    <ChevronRight size={16} color="#CBD5E1" />
+                  </View>
+
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Calendar size={12} color="#64748B" />
+                      <Text style={{ fontSize: 12, color: "#64748B" }}>{formatDate(job.date)}</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Clock size={12} color="#64748B" />
+                      <Text style={{ fontSize: 12, color: "#64748B" }}>{job.startTime}</Text>
+                    </View>
+                  </View>
+
+                  {!!job.location && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 }}>
+                      <MapPin size={12} color="#94A3B8" />
+                      <Text style={{ fontSize: 12, color: "#94A3B8" }} numberOfLines={1}>
+                        {job.location}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

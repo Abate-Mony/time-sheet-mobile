@@ -32,7 +32,7 @@ export function NoActiveShift({ nextShift }: { nextShift?: NextShift }) {
       {nextShift ? (
         <Pressable
           style={styles.nextShiftCard}
-          onPress={() => router.push({ pathname: "/job/[id]", params: { id: nextShift._id } })}
+          onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: nextShift._id } })}
         >
           <View style={styles.nextShiftHeader}>
             <Calendar size={13} color="#1E3A5F" />

@@ -21,6 +21,7 @@ import {
     TextInput,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NoActiveShift } from "@/components/NoActiveShift";
 import customFetch from "@/utils/customFetch";
@@ -141,28 +142,30 @@ export default function ClockScreen() {
 
   if (isError) {
     return (
-      <View style={styles.centered}>
+      <SafeAreaView edges={["top"]} style={styles.centered}>
         <Text style={styles.errorTitle}>Could not load active job</Text>
         <Pressable style={styles.primaryButton} onPress={() => refetch()}>
           <Text style={styles.primaryButtonText}>Try Again</Text>
         </Pressable>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!isLoading && data?.job === null) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <NoActiveShift nextShift={nextShiftData} />
-      </ScrollView>
+      <SafeAreaView edges={["top"]} style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <NoActiveShift nextShift={nextShiftData} />
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   if (isLoading || !job || !workerJobDetails) {
     return (
-      <View style={styles.centered}>
+      <SafeAreaView edges={["top"]} style={styles.centered}>
         <ActivityIndicator size="large" />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -244,8 +247,8 @@ export default function ClockScreen() {
 
   if (clockState === "done" && doneSnapshot) {
     return (
+      <SafeAreaView edges={["top"]} style={styles.screen}>
       <ScrollView
-        style={styles.screen}
         contentContainerStyle={styles.content}
       >
         <View style={styles.completeCard}>
@@ -329,12 +332,13 @@ export default function ClockScreen() {
           </View>
         </View>
       </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView edges={["top"]} style={styles.screen}>
     <ScrollView
-      style={styles.screen}
       contentContainerStyle={styles.content}
     >
       <View style={styles.jobCard}>
@@ -509,6 +513,7 @@ export default function ClockScreen() {
         />
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -531,6 +536,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#F8FAFC",
+    
   },
 
   content: {

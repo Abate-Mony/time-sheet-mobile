@@ -9,6 +9,8 @@ export const saveSession = async (accessToken: string, user: User) => {
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user))
 }
 
+export const saveUser = (user: User) => SecureStore.setItemAsync(USER_KEY, JSON.stringify(user))
+
 export const getToken = () => SecureStore.getItemAsync(TOKEN_KEY)
 
 export const getStoredUser = async (): Promise<User | null> => {

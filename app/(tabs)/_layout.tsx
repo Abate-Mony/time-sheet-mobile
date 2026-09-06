@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
-import { Briefcase, Clock, Home, User } from "lucide-react-native"
+import { Briefcase, CalendarDays, Clock, Home, User } from "lucide-react-native"
 import { Platform, Text, View } from "react-native"
 
 const ACTIVE = "#1E3A5F"
@@ -65,8 +65,8 @@ export default function TabLayout() {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E2E8F0",
           borderTopWidth: 1,
-          borderTopRightRadius:20,
-          borderTopLeftRadius:20,
+          // borderTopRightRadius:20,
+          // borderTopLeftRadius:20,
         },
       }}
     >
@@ -91,6 +91,14 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon Icon={Clock} focused={focused} label="Clock" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="schedule"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={CalendarDays} focused={focused} label="Schedule" />
           ),
         }}
       />

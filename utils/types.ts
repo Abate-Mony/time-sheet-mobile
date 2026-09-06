@@ -1,7 +1,7 @@
 // ── User ──────────────────────────────────────────────────────────────────────
 
 import z from "zod";
-import { createJobSchema } from "./schema";
+import { createJobSchema, editProfileSchema } from "./schema";
 
 export type UserRole = "admin" | "manager" | "worker"
 export type CreateJobForm = Omit<z.infer<typeof createJobSchema>, "client"> & {
@@ -70,6 +70,68 @@ export interface User {
   lastLogin?: string
   createdAt: string
   updatedAt: string
+  phone?: string
+  gender?: "Male" | "Female" | "Other" | "Prefer not to say"
+}
+
+// Payload shape sent to the API (post-transform: no empty-string gender).
+export type EditProfileForm = z.output<typeof editProfileSchema>
+// Shape react-hook-form works with (pre-transform: gender can be "" from the placeholder option).
+export type EditProfileFormInput = z.input<typeof editProfileSchema>
+
+// ── Notification preferences ─────────────────────────────────────────────────
+
+export type NotificationChannel = "email" | "push" | "inApp"
+
+export type NotificationEvent =
+  | "job_assigned"
+  | "job_accepted"
+  | "job_declined"
+  | "worker_checked_in"
+  | "worker_late"
+  | "worker_checked_out"
+  | "job_completed"
+  | "geofence_warning"
+  | "timesheet_submitted"
+  | "timesheet_approved"
+  | "timesheet_rejected"
+
+export type EventNotificationPreference = {
+  email: boolean
+  push: boolean
+  inApp: boolean
+}
+
+export interface NotificationPreferences {
+  _id?: string
+  user?: string
+  company?: string
+  emailEnabled: boolean
+  pushEnabled: boolean
+  inAppEnabled: boolean
+  events: Record<NotificationEvent, EventNotificationPreference>
+}
+
+// ── Timesheets ────────────────────────────────────────────────────────────────
+
+export type TimesheetPeriodType = "weekly" | "biweekly" | "monthly"
+
+export interface TimesheetAssignment {
+  _id?: string
+  title?: string
+  date?: string
+  startTime?: string
+  endTime?: string
+  minutes?: number
+}
+
+export interface TimesheetSummaryResponse {
+  totalJobs: number
+  shiftsCount: number
+  hasData: boolean
+  totalMinutes: number
+  totalHours: number
+  assignments: TimesheetAssignment[]
 }
 
 // ── Job ───────────────────────────────────────────────────────────────────────
@@ -80,11 +142,14 @@ export type JobPriority = "low" | "medium" | "high" | "urgent"
 export interface Job {
   _id: string
   company: string
-  client: string
+  client: {
+    name?: string
+  } 
   title: string
   description: string
   location: string
   address: string
+  coordinates?: { lat: number; lng: number }
   date: string          // ISO string from the API
   startTime: string     // "HH:mm"
   endTime: string       // "HH:mm"
@@ -103,6 +168,7 @@ export interface Job {
   createdBy: string
   createdAt: string
   updatedAt: string
+  minutes: number
 }
 
 // ── Job assignment ────────────────────────────────────────────────────────────
@@ -186,3 +252,33 @@ export interface UpdateStatusResponse {
   message: string
   assignment: JobAssignment
 }
+
+// ── Recurring assignments ─────────────────────────────────────────────────────
+
+export interface WorkerRecurringShift {
+  jobId: string
+  assignmentId: string
+  date: string
+  startTime: string
+  endTime: string
+  location?: string
+  status: AssignmentStatus
+}
+
+export interface WorkerRecurringGroup {
+  recurringJobId: string
+  title: string
+  location?: string
+  client?: string
+  recurrenceLabel: string
+  startTime: string
+  endTime: string
+  pendingCount: number
+  acceptedCount: number
+  declinedCount: number
+  upcomingCount: number
+  nextShift?: { jobId: string; assignmentId: string; date: string; startTime: string; endTime: string }
+  shifts: WorkerRecurringShift[]
+}
+
+export type DialogState = "confirm" | "loading" | "success" | "partial" | "error" | "empty"
