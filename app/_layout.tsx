@@ -1,7 +1,6 @@
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
+import { DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -50,7 +49,6 @@ function NotificationTapHandler() {
 
 function RootNavigator() {
   const { accessToken, loading } = useAuth();
-  const colorScheme = useColorScheme();
 
   if (loading) {
     return null;
@@ -59,7 +57,11 @@ function RootNavigator() {
   const authenticated = !!accessToken;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    // The app is designed for a light UI only (see the StatusBar note below),
+    // so the navigation theme is pinned to DefaultTheme regardless of the
+    // OS color scheme — DarkTheme's black background was showing through
+    // in the safe-area strip below the tab bar when the device was in dark mode.
+    <ThemeProvider value={DefaultTheme}>
           <QueryClientProvider client={queryClient}>
       <Stack>
         <Stack.Protected guard={!authenticated}>
