@@ -17,32 +17,49 @@ function TabIcon({
 }) {
   return (
     <View style={{ alignItems: "center", justifyContent: "center", gap: 3, width: 64 }}>
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 12,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: focused ? ACTIVE : "transparent",
-          ...(focused
-            ? {
-                shadowColor: ACTIVE,
-                shadowOpacity: 0.25,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 4,
-              }
-            : {}),
-        }}
-      >
-        <Icon size={18} color={focused ? "#FFFFFF" : INACTIVE} />
-      </View>
+      <Icon size={22} color={focused ? ACTIVE : INACTIVE} />
       <Text
         style={{
           fontSize: 10,
           fontWeight: "600",
           color: focused ? ACTIVE : INACTIVE,
+        }}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
+  )
+}
+
+function CenterTabIcon({ Icon, label }: { Icon: LucideIcon; label: string }) {
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center", gap: 3, width: 64 }}>
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          marginTop: -30,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: ACTIVE,
+          borderWidth: 4,
+          borderColor: "#FFFFFF",
+          shadowColor: ACTIVE,
+          shadowOpacity: 0.35,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        }}
+      >
+        <Icon size={24} color="#FFFFFF" />
+      </View>
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: "600",
+          color: ACTIVE,
         }}
         numberOfLines={1}
       >
@@ -65,8 +82,7 @@ export default function TabLayout() {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E2E8F0",
           borderTopWidth: 1,
-          // borderTopRightRadius:20,
-          // borderTopLeftRadius:20,
+          overflow: "visible",
         },
       }}
     >
@@ -89,9 +105,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="clock"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={Clock} focused={focused} label="Clock" />
-          ),
+          tabBarIcon: () => <CenterTabIcon Icon={Clock} label="Clock" />,
         }}
       />
       <Tabs.Screen
