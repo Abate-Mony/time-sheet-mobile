@@ -76,6 +76,10 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
           height: Platform.OS === "ios" ? 88 : 68,
           paddingTop: 8,
           paddingBottom: Platform.OS === "ios" ? 28 : 10,
