@@ -1,35 +1,37 @@
 import customFetch from "@/utils/customFetch";
 import type { CreateJobForm } from "@/utils/types";
-import { useQuery } from "@tanstack/react-query";
-import dayjs from "dayjs";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import dayjs, { type Dayjs } from "dayjs";
+import utc from "dayjs/plugin/utc";
 import { useRouter } from "expo-router";
-import {
-    ChevronLeft,
-    ChevronRight,
-    X,
-} from "lucide-react-native";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+dayjs.extend(utc);
+
 export const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
-export function startOfWeek(d: dayjs.Dayjs) {
-  const day = d.day();
+// job.date comes back from the API as a full ISO datetime string
+// ("2026-08-30T00:00:00.000Z"), not a plain YYYY-MM-DD one. Parsing it as
+// local time risks shifting the calendar day backward for a
+// negative-UTC-offset device; dayjs.utc(...) reads the date component as
+// the backend actually meant it (job.date is always normalised to UTC
+// midnight — see getMyJobs on the server).
+function toDateKey(rawDate: string) {
+  return dayjs.utc(rawDate).format("YYYY-MM-DD");
+}
 
-  const diffToMonday =
-    day === 0 ? -6 : 1 - day;
-
-  return d
-    .add(diffToMonday, "day")
-    .startOf("day");
+function normalizeJobDates(jobs: CreateJobForm[]): CreateJobForm[] {
+  return jobs.map((j) => ({ ...j, date: toDateKey(j.date) }));
 }
 
 function shiftHours(job: CreateJobForm) {
@@ -37,14 +39,18 @@ function shiftHours(job: CreateJobForm) {
     return job.minutes / 60;
   }
 
-  const diff = dayjs(
-    `2000-01-01T${job.endTime}`
-  ).diff(
+  const diff = dayjs(`2000-01-01T${job.endTime}`).diff(
     dayjs(`2000-01-01T${job.startTime}`),
     "minute"
   );
 
   return Math.max(0, diff) / 60;
+}
+
+function estimatedPay(job: CreateJobForm): number | null {
+  const rate = job.payRate ?? 0;
+  if (!rate) return null;
+  return rate * shiftHours(job);
 }
 
 function dayHeading(dateStr: string) {
@@ -55,91 +61,66 @@ function dayHeading(dateStr: string) {
     return "Today";
   }
 
-  if (
-    d.isSame(today.add(1, "day"), "day")
-  ) {
+  if (d.isSame(today.add(1, "day"), "day")) {
     return "Tomorrow";
   }
 
   return d.format("dddd, D MMMM");
 }
 
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
+function dateBadgeLabel(dateStr: string) {
+  const d = dayjs(dateStr);
+  const today = dayjs();
+
+  if (d.isSame(today, "day")) return "Today";
+  if (d.isSame(today.add(1, "day"), "day")) return "Tomorrow";
+  return d.format("D MMM");
+}
+
+// A day cell's status dots, capped at the statuses this app actually has
+// for a worker's own schedule — "Confirmed" covers both accepted and
+// in-progress, "Cancelled" covers both cancelled and declined.
+const STATUS_DOT: Record<string, string> = {
+  accepted: "#3B82F6",
+  "in-progress": "#3B82F6",
+  pending: "#F59E0B",
+  completed: "#10B981",
+  cancelled: "#FB7185",
+  declined: "#FB7185",
+};
+
+const DOT_LEGEND: { label: string; color: string }[] = [
+  { label: "Confirmed", color: "#3B82F6" },
+  { label: "Pending", color: "#F59E0B" },
+  { label: "Completed", color: "#10B981" },
+  { label: "Cancelled", color: "#FB7185" },
+];
+
+function StatusBadge({ status }: { status: string }) {
   const config: Record<
     string,
-    {
-      backgroundColor: string;
-      color: string;
-    }
+    { backgroundColor: string; color: string }
   > = {
-    pending: {
-      backgroundColor: "#FEF3C7",
-      color: "#92400E",
-    },
-
-    accepted: {
-      backgroundColor: "#DBEAFE",
-      color: "#1D4ED8",
-    },
-
-    "in-progress": {
-      backgroundColor: "#DCFCE7",
-      color: "#166534",
-    },
-
-    completed: {
-      backgroundColor: "#D1FAE5",
-      color: "#047857",
-    },
-
-    declined: {
-      backgroundColor: "#E2E8F0",
-      color: "#475569",
-    },
-
-    cancelled: {
-      backgroundColor: "#FEE2E2",
-      color: "#B91C1C",
-    },
+    pending: { backgroundColor: "#FEF3C7", color: "#92400E" },
+    accepted: { backgroundColor: "#DBEAFE", color: "#1D4ED8" },
+    "in-progress": { backgroundColor: "#DCFCE7", color: "#166534" },
+    completed: { backgroundColor: "#D1FAE5", color: "#047857" },
+    declined: { backgroundColor: "#E2E8F0", color: "#475569" },
+    cancelled: { backgroundColor: "#FEE2E2", color: "#B91C1C" },
   };
 
-  const badge =
-    config[status] ?? config.pending;
+  const badge = config[status] ?? config.pending;
 
   return (
-    <View
-      style={[
-        styles.statusBadge,
-        {
-          backgroundColor:
-            badge.backgroundColor,
-        },
-      ]}
-    >
-      <Text
-        style={[
-          styles.statusBadgeText,
-          {
-            color: badge.color,
-          },
-        ]}
-      >
-        {status}
-      </Text>
+    <View style={[styles.statusBadge, { backgroundColor: badge.backgroundColor }]}>
+      <Text style={[styles.statusBadgeText, { color: badge.color }]}>{status}</Text>
     </View>
   );
 }
 
-function ShiftRow({
-  job,
-}: {
-  job: CreateJobForm;
-}) {
+function ShiftRow({ job }: { job: CreateJobForm }) {
   const router = useRouter();
+  const pay = estimatedPay(job);
 
   return (
     <Pressable
@@ -151,495 +132,302 @@ function ShiftRow({
           params: { id: job._id },
         });
       }}
-      style={({ pressed }) => [
-        styles.shiftRow,
-        pressed && styles.shiftRowPressed,
-      ]}
+      style={({ pressed }) => [styles.shiftRow, pressed && styles.shiftRowPressed]}
     >
       <View style={styles.shiftTime}>
-        <Text style={styles.startTime}>
-          {job.startTime}
-        </Text>
-
-        <Text style={styles.endTime}>
-          {job.endTime}
-        </Text>
+        <Text style={styles.startTime}>{job.startTime}</Text>
+        <Text style={styles.endTime}>{job.endTime}</Text>
       </View>
 
       <View style={styles.verticalDivider} />
 
       <View style={styles.shiftInfo}>
-        <Text
-          style={styles.shiftTitle}
-          numberOfLines={1}
-        >
+        <Text style={styles.shiftTitle} numberOfLines={1}>
           {job.title}
         </Text>
-
-        <Text
-          style={styles.shiftLocation}
-          numberOfLines={1}
-        >
-          {job.location ||
-            job.client?.name}
+        <Text style={styles.shiftLocation} numberOfLines={1}>
+          {job.location || job.client?.name}
         </Text>
       </View>
 
-      <StatusBadge
-        status={job.status ?? "pending"}
-      />
+      {pay != null && <Text style={styles.payText}>£{pay.toFixed(0)}</Text>}
+
+      <StatusBadge status={job.status ?? "pending"} />
+    </Pressable>
+  );
+}
+
+// Upcoming rows "jump to day" — select+scroll the calendar to that date
+// instead of navigating straight to the job, so the calendar stays the one
+// place a worker picks a day from (ShiftRow above still navigates straight
+// to the job, since that's what tapping a shift inside the selected day
+// panel should do).
+function UpcomingRow({ job, onJump }: { job: CreateJobForm; onJump: () => void }) {
+  const pay = estimatedPay(job);
+
+  return (
+    <Pressable
+      onPress={onJump}
+      style={({ pressed }) => [styles.shiftRow, pressed && styles.shiftRowPressed]}
+    >
+      <View style={styles.dateBadge}>
+        <Text style={styles.dateBadgeText}>{dateBadgeLabel(job.date)}</Text>
+      </View>
+
+      <View style={styles.shiftInfo}>
+        <Text style={styles.shiftTitle} numberOfLines={1}>
+          {job.title}
+        </Text>
+        <Text style={styles.shiftLocation} numberOfLines={1}>
+          {job.startTime}–{job.endTime}
+          {job.location ? ` · ${job.location}` : ""}
+        </Text>
+      </View>
+
+      {pay != null && <Text style={styles.payText}>£{pay.toFixed(0)}</Text>}
+
+      <StatusBadge status={job.status ?? "pending"} />
     </Pressable>
   );
 }
 
 export default function ScheduleScreen() {
-  const [weekStart, setWeekStart] =
-    useState(() =>
-      startOfWeek(dayjs())
-    );
+  const [viewedMonth, setViewedMonth] = useState(() => dayjs().startOf("month"));
+  const [selectedDate, setSelectedDate] = useState(() => dayjs().format("YYYY-MM-DD"));
 
-  const [
-    selectedDate,
-    setSelectedDate,
-  ] = useState<string | null>(null);
+  const monthStart = viewedMonth;
+  const monthEnd = viewedMonth.endOf("month");
 
-  const {
-    data,
-    isLoading,
-  } = useQuery({
-    queryKey: ["worker-schedule"],
-
+  // Scoped exactly to the viewed month — refetches on prev/next nav instead
+  // of the old approach (fetch the oldest 200 assignments ever, ascending,
+  // unbounded by date). A worker active long enough to have 200+ historical
+  // assignments would never reach today's or future shifts that way; the
+  // backend already supports start/end bounds (getMyJobs), this just uses them.
+  const { data: monthData, isLoading: monthLoading } = useQuery({
+    queryKey: ["worker-schedule-month", monthStart.format("YYYY-MM")],
     queryFn: async () => {
-      const { data } =
-        await customFetch.get<{
-          jobs: CreateJobForm[];
-        }>("/workers", {
-          params: {
-            limit: 200,
-            sort: "asc",
-            status: "all",
-          },
-        });
+      const { data } = await customFetch.get<{ jobs: CreateJobForm[] }>("/workers", {
+        params: {
+          start: monthStart.format("YYYY-MM-DD"),
+          end: monthEnd.format("YYYY-MM-DD"),
+          status: "all",
+          limit: 200,
+        },
+      });
+      return data;
+    },
+    placeholderData: keepPreviousData,
+  });
 
+  // Anchored to today regardless of which month the calendar is showing —
+  // a separate, independently-bounded query rather than widening the month
+  // query, so browsing to a distant past/future month doesn't balloon it.
+  const { data: upcomingData, isLoading: upcomingLoading } = useQuery({
+    queryKey: ["worker-schedule-upcoming"],
+    queryFn: async () => {
+      const { data } = await customFetch.get<{ jobs: CreateJobForm[] }>("/workers", {
+        params: {
+          start: dayjs().format("YYYY-MM-DD"),
+          status: "all",
+          limit: 50,
+        },
+      });
       return data;
     },
   });
 
-  const jobs = data?.jobs ?? [];
+  const monthJobs = useMemo(() => normalizeJobDates(monthData?.jobs ?? []), [monthData]);
+  const upcomingJobs = useMemo(
+    () =>
+      normalizeJobDates(upcomingData?.jobs ?? []).filter(
+        (j) => !["completed", "cancelled", "declined"].includes(j.status ?? "")
+      ),
+    [upcomingData]
+  );
 
-  const weekDays = useMemo(() => {
-    return Array.from(
-      {
-        length: 7,
-      },
-      (_, i) => {
-        const date =
-          weekStart.add(i, "day");
+  type GridCell = { date: Dayjs; dateStr: string; jobs: CreateJobForm[] } | null;
 
-        const dateStr =
-          date.format("YYYY-MM-DD");
+  const weeks = useMemo(() => {
+    const leading = (monthStart.day() + 6) % 7; // 0=Mon .. 6=Sun
+    const daysInMonth = monthEnd.date();
+    const cells: GridCell[] = [];
+    for (let i = 0; i < leading; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = monthStart.date(d);
+      const dateStr = date.format("YYYY-MM-DD");
+      cells.push({ date, dateStr, jobs: monthJobs.filter((j) => j.date === dateStr) });
+    }
+    const rows: GridCell[][] = [];
+    for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+    return rows;
+  }, [monthStart, monthEnd, monthJobs]);
 
-        const dayJobs =
-          jobs.filter(
-            (job) =>
-              job.date === dateStr
-          );
+  const selectedDayJobs = useMemo(
+    () =>
+      monthJobs
+        .filter((j) => j.date === selectedDate)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [monthJobs, selectedDate]
+  );
 
-        return {
-          day: DAY_LABELS[i],
-          date,
-          dateStr,
+  function jumpToDate(dateStr: string) {
+    setSelectedDate(dateStr);
+    setViewedMonth(dayjs(dateStr).startOf("month"));
+  }
 
-          isToday: date.isSame(
-            dayjs(),
-            "day"
-          ),
-
-          jobs: dayJobs,
-
-          hours: dayJobs.reduce(
-            (sum, job) =>
-              sum +
-              shiftHours(job),
-            0
-          ),
-        };
-      }
-    );
-  }, [weekStart, jobs]);
-
-  const groupedUpcoming =
-    useMemo(() => {
-      const today =
-        dayjs().format(
-          "YYYY-MM-DD"
-        );
-
-      const upcoming = jobs
-        .filter(
-          (job) =>
-            ![
-              "completed",
-              "cancelled",
-              "declined",
-            ].includes(
-              job.status ?? ""
-            ) &&
-            job.date >= today
-        )
-        .sort((a, b) =>
-          (
-            a.date + a.startTime
-          ).localeCompare(
-            b.date + b.startTime
-          )
-        );
-
-      const groups =
-        new Map<
-          string,
-          CreateJobForm[]
-        >();
-
-      for (const job of upcoming) {
-        if (
-          !groups.has(job.date)
-        ) {
-          groups.set(
-            job.date,
-            []
-          );
-        }
-
-        groups
-          .get(job.date)!
-          .push(job);
-      }
-
-      return [
-        ...groups.entries(),
-      ];
-    }, [jobs]);
-
-  const visibleGroups =
-    selectedDate
-      ? groupedUpcoming.filter(
-          ([date]) =>
-            date === selectedDate
-        )
-      : groupedUpcoming;
+  const todayStr = dayjs().format("YYYY-MM-DD");
 
   return (
-    <SafeAreaView
-      style={styles.screen}
-      edges={["top"]}
-    >
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
-        contentContainerStyle={
-          styles.content
-        }
-        showsVerticalScrollIndicator={
-          false
-        }
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View>
-          <Text style={styles.title}>
-            Schedule
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Your upcoming assignments
-          </Text>
+          <Text style={styles.title}>Schedule</Text>
+          <Text style={styles.subtitle}>Your upcoming assignments</Text>
         </View>
 
-        {/* Week Strip */}
-        <View style={styles.weekCard}>
-          <View style={styles.weekHeader}>
-            <Text
-              style={styles.weekTitle}
+        {/* Month calendar */}
+        <View style={styles.monthCard}>
+          <View style={styles.monthHeader}>
+            <Pressable
+              onPress={() => setViewedMonth((m) => m.subtract(1, "month"))}
+              style={({ pressed }) => [styles.navButton, pressed && styles.navPressed]}
             >
-              Week of{" "}
-              {weekStart.format(
-                "D MMMM"
-              )}
-            </Text>
+              <ChevronLeft size={16} color="#94A3B8" />
+            </Pressable>
 
-            <View
-              style={
-                styles.weekNavigation
-              }
+            <Text style={styles.monthTitle}>{monthStart.format("MMMM YYYY")}</Text>
+
+            <Pressable
+              onPress={() => setViewedMonth((m) => m.add(1, "month"))}
+              style={({ pressed }) => [styles.navButton, pressed && styles.navPressed]}
             >
-              <Pressable
-                onPress={() =>
-                  setWeekStart((w) =>
-                    w.subtract(
-                      7,
-                      "day"
-                    )
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.weekNavButton,
-                  pressed &&
-                    styles.navPressed,
-                ]}
-              >
-                <ChevronLeft
-                  size={16}
-                  color="#94A3B8"
-                />
-              </Pressable>
-
-              <Pressable
-                onPress={() =>
-                  setWeekStart((w) =>
-                    w.add(
-                      7,
-                      "day"
-                    )
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.weekNavButton,
-                  pressed &&
-                    styles.navPressed,
-                ]}
-              >
-                <ChevronRight
-                  size={16}
-                  color="#94A3B8"
-                />
-              </Pressable>
-            </View>
+              <ChevronRight size={16} color="#94A3B8" />
+            </Pressable>
           </View>
 
-          <View
-            style={styles.daysRow}
-          >
-            {weekDays.map(
-              (d, i) => {
-                const isSelected =
-                  d.dateStr ===
-                  selectedDate;
+          <View style={styles.weekdayRow}>
+            {DAY_LABELS.map((d, i) => (
+              <Text key={i} style={styles.weekdayLabel}>
+                {d}
+              </Text>
+            ))}
+          </View>
+
+          {weeks.map((week, wi) => (
+            <View key={wi} style={styles.gridRow}>
+              {week.map((cell, ci) => {
+                if (!cell) return <View key={ci} style={styles.gridCell} />;
+
+                const isToday = cell.dateStr === todayStr;
+                const isSelected = cell.dateStr === selectedDate;
+                const hasJobs = cell.jobs.length > 0;
+                const statuses = [...new Set(cell.jobs.map((j) => j.status ?? ""))].slice(0, 3);
 
                 return (
                   <Pressable
-                    key={i}
-                    onPress={() =>
-                      setSelectedDate(
-                        (selected) =>
-                          selected ===
-                          d.dateStr
-                            ? null
-                            : d.dateStr
-                      )
-                    }
-                    style={
-                      styles.dayColumn
-                    }
+                    key={ci}
+                    onPress={() => setSelectedDate(cell.dateStr)}
+                    style={styles.gridCell}
                   >
-                    <Text
-                      style={
-                        styles.dayLabel
-                      }
-                    >
-                      {d.day}
-                    </Text>
-
                     <View
                       style={[
                         styles.dayCircle,
-
-                        isSelected
-                          ? styles.dayCircleSelected
-                          : d.isToday
-                            ? styles.dayCircleToday
-                            : d.jobs
-                                  .length >
-                                0
-                              ? styles.dayCircleJobs
-                              : styles.dayCircleEmpty,
+                        isToday
+                          ? styles.dayCircleToday
+                          : isSelected
+                            ? styles.dayCircleSelected
+                            : undefined,
                       ]}
                     >
                       <Text
                         style={[
                           styles.dayNumber,
-
-                          isSelected
-                            ? styles.dayNumberSelected
-                            : d.isToday ||
-                                d.jobs
-                                  .length >
-                                  0
-                              ? styles.dayNumberActive
-                              : styles.dayNumberEmpty,
+                          isToday
+                            ? styles.dayNumberToday
+                            : isSelected
+                              ? styles.dayNumberSelected
+                              : hasJobs
+                                ? styles.dayNumberActive
+                                : styles.dayNumberEmpty,
                         ]}
                       >
-                        {d.date.date()}
+                        {cell.date.date()}
                       </Text>
                     </View>
 
-                    {d.jobs.length >
-                      0 && (
-                      <View
-                        style={
-                          styles.shiftBars
-                        }
-                      >
-                        {Array.from({
-                          length:
-                            Math.max(
-                              1,
-                              Math.ceil(
-                                d.hours /
-                                  8
-                              )
-                            ),
-                        }).map(
-                          (_, j) => (
-                            <View
-                              key={j}
-                              style={[
-                                styles.shiftBar,
-
-                                isSelected
-                                  ? styles.shiftBarSelected
-                                  : styles.shiftBarNormal,
-                              ]}
-                            />
-                          )
-                        )}
-                      </View>
-                    )}
+                    <View style={styles.dotsRow}>
+                      {statuses.map((s) => (
+                        <View
+                          key={s}
+                          style={[styles.dot, { backgroundColor: STATUS_DOT[s] ?? "#CBD5E1" }]}
+                        />
+                      ))}
+                    </View>
                   </Pressable>
                 );
-              }
-            )}
+              })}
+            </View>
+          ))}
+
+          <View style={styles.legendRow}>
+            {DOT_LEGEND.map((l) => (
+              <View key={l.label} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: l.color }]} />
+                <Text style={styles.legendLabel}>{l.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* Agenda heading */}
-        <View
-          style={styles.agendaHeader}
-        >
-          <Text
-            style={
-              styles.agendaTitle
-            }
-          >
-            {selectedDate
-              ? dayHeading(
-                  selectedDate
-                )
-              : "Upcoming Shifts"}
-          </Text>
+        {/* Selected day panel */}
+        <View style={styles.dayPanel}>
+          <Text style={styles.agendaTitle}>{dayHeading(selectedDate)}</Text>
 
-          {selectedDate && (
-            <Pressable
-              onPress={() =>
-                setSelectedDate(null)
-              }
-              style={
-                styles.clearButton
-              }
-            >
-              <X
-                size={13}
-                color="#94A3B8"
-              />
-
-              <Text
-                style={
-                  styles.clearText
-                }
-              >
-                Clear
-              </Text>
-            </Pressable>
+          {monthLoading && !monthData ? (
+            <View style={styles.emptyCard}>
+              <ActivityIndicator size="small" color="#1E3A5F" />
+            </View>
+          ) : selectedDayJobs.length === 0 ? (
+            <View style={styles.emptyDayState}>
+              <View style={styles.emptyIconCircle}>
+                <Calendar size={18} color="#94A3B8" />
+              </View>
+              <Text style={styles.emptyDayText}>No shifts on this day</Text>
+            </View>
+          ) : (
+            <View style={styles.shiftList}>
+              {selectedDayJobs.map((job) => (
+                <ShiftRow key={job._id} job={job} />
+              ))}
+            </View>
           )}
         </View>
 
-        {/* Agenda */}
-        {isLoading ? (
-          <View
-            style={styles.emptyCard}
-          >
-            <ActivityIndicator
-              size="small"
-              color="#1E3A5F"
-            />
+        {/* Upcoming */}
+        <View style={styles.upcomingSection}>
+          <Text style={styles.agendaTitle}>Upcoming</Text>
 
-            <Text
-              style={
-                styles.loadingText
-              }
-            >
-              Loading…
-            </Text>
-          </View>
-        ) : visibleGroups.length ===
-          0 ? (
-          <View
-            style={styles.emptyCard}
-          >
-            <Text
-              style={
-                styles.emptyTitle
-              }
-            >
-              {selectedDate
-                ? "No shifts on this day"
-                : "No upcoming shifts scheduled"}
-            </Text>
-          </View>
-        ) : (
-          <View
-            style={
-              styles.groupsContainer
-            }
-          >
-            {visibleGroups.map(
-              ([date, dayJobs]) => (
-                <View
-                  key={date}
-                  style={
-                    styles.dayGroup
-                  }
-                >
-                  {!selectedDate && (
-                    <Text
-                      style={
-                        styles.groupDate
-                      }
-                    >
-                      {dayHeading(
-                        date
-                      )}
-                    </Text>
-                  )}
-
-                  <View
-                    style={
-                      styles.shiftList
-                    }
-                  >
-                    {dayJobs.map(
-                      (job) => (
-                        <ShiftRow
-                          key={
-                            job._id
-                          }
-                          job={job}
-                        />
-                      )
-                    )}
-                  </View>
-                </View>
-              )
-            )}
-          </View>
-        )}
+          {upcomingLoading ? (
+            <View style={styles.emptyCard}>
+              <ActivityIndicator size="small" color="#1E3A5F" />
+              <Text style={styles.loadingText}>Loading…</Text>
+            </View>
+          ) : upcomingJobs.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No upcoming shifts scheduled</Text>
+            </View>
+          ) : (
+            <View style={styles.shiftList}>
+              {upcomingJobs.map((job) => (
+                <UpcomingRow key={job._id} job={job} onJump={() => jumpToDate(job.date)} />
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -669,7 +457,7 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
   },
 
-  weekCard: {
+  monthCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
     borderWidth: 1,
@@ -677,35 +465,26 @@ const styles = StyleSheet.create({
     padding: 16,
 
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
 
-  weekHeader: {
+  monthHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     marginBottom: 14,
   },
 
-  weekTitle: {
-    fontSize: 12,
+  monthTitle: {
+    fontSize: 13,
     fontWeight: "800",
     color: "#334155",
   },
 
-  weekNavigation: {
-    flexDirection: "row",
-    gap: 4,
-  },
-
-  weekNavButton: {
+  navButton: {
     width: 30,
     height: 30,
     borderRadius: 8,
@@ -717,125 +496,154 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
   },
 
-  daysRow: {
+  weekdayRow: {
     flexDirection: "row",
-    justifyContent:
-      "space-between",
+    marginBottom: 6,
   },
 
-  dayColumn: {
+  weekdayLabel: {
     flex: 1,
-    alignItems: "center",
-    gap: 6,
-  },
-
-  dayLabel: {
+    textAlign: "center",
     fontSize: 10,
     fontWeight: "700",
     color: "#94A3B8",
   },
 
+  gridRow: {
+    flexDirection: "row",
+  },
+
+  gridCell: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingVertical: 3,
+    gap: 3,
+  },
+
   dayCircle: {
-    width: 36,
-    height: 36,
+    width: 30,
+    height: 30,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  dayCircleSelected: {
+  dayCircleToday: {
     backgroundColor: "#1E3A5F",
   },
 
-  dayCircleToday: {
-    backgroundColor: "#EFF6FF",
-    borderWidth: 2,
-    borderColor: "#BFDBFE",
-  },
-
-  dayCircleJobs: {
+  dayCircleSelected: {
     backgroundColor: "#EFF6FF",
     borderWidth: 1,
     borderColor: "#DBEAFE",
   },
 
-  dayCircleEmpty: {
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-
   dayNumber: {
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
   },
 
-  dayNumberSelected: {
+  dayNumberToday: {
     color: "#FFFFFF",
   },
 
-  dayNumberActive: {
+  dayNumberSelected: {
     color: "#1D4ED8",
+  },
+
+  dayNumberActive: {
+    color: "#0F172A",
   },
 
   dayNumberEmpty: {
     color: "#CBD5E1",
   },
 
-  shiftBars: {
-    width: "80%",
+  dotsRow: {
+    flexDirection: "row",
     gap: 2,
+    height: 4,
   },
 
-  shiftBar: {
-    height: 3,
+  dot: {
+    width: 4,
+    height: 4,
     borderRadius: 999,
   },
 
-  shiftBarSelected: {
-    backgroundColor: "#1E3A5F",
+  legendRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
   },
 
-  shiftBarNormal: {
-    backgroundColor: "#93C5FD",
-  },
-
-  agendaHeader: {
+  legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    gap: 5,
+  },
+
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+  },
+
+  legendLabel: {
+    fontSize: 10,
+    color: "#94A3B8",
+  },
+
+  dayPanel: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 16,
+    gap: 12,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  emptyDayState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+    gap: 8,
+  },
+
+  emptyIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyDayText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+
+  upcomingSection: {
+    gap: 10,
   },
 
   agendaTitle: {
     fontSize: 14,
     fontWeight: "800",
     color: "#334155",
-  },
-
-  clearButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-
-  clearText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#94A3B8",
-  },
-
-  groupsContainer: {
-    gap: 16,
-  },
-
-  dayGroup: {
-    gap: 8,
-  },
-
-  groupDate: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#94A3B8",
   },
 
   shiftList: {
@@ -854,10 +662,7 @@ const styles = StyleSheet.create({
     padding: 12,
 
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 3,
     elevation: 1,
@@ -885,6 +690,22 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
   },
 
+  dateBadge: {
+    minWidth: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+
+  dateBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#334155",
+  },
+
   verticalDivider: {
     width: 1,
     alignSelf: "stretch",
@@ -905,6 +726,12 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontSize: 12,
     color: "#94A3B8",
+  },
+
+  payText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0F172A",
   },
 
   statusBadge: {
