@@ -3,11 +3,12 @@ import { useAuth } from "@/context/AuthContext"
 import { useQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
 import isoWeek from "dayjs/plugin/isoWeek"
+import utc from "dayjs/plugin/utc"
 import { useRouter } from "expo-router"
-import { AlertCircle, Calendar, ChevronRight, Clock, MapPin, Timer, Zap } from "lucide-react-native"
+import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Timer, Zap } from "lucide-react-native"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import customFetch from "../../utils/customFetch"
 import { formatDate } from "../../utils/date"
 import type { MyJobsResponse, WorkerJob } from "../../utils/types"
@@ -15,9 +16,18 @@ import type { MyJobsResponse, WorkerJob } from "../../utils/types"
 const UPCOMING_SHIFTS_LIMIT = 5
 
 dayjs.extend(isoWeek)
+dayjs.extend(utc)
 
 const WEEKLY_TARGET_HOURS = 40
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"]
+
+// job.date comes back from the API as a full ISO datetime string, not
+// YYYY-MM-DD — dayjs.utc(...) reads the date component as the backend
+// actually meant it (job.date is always normalised to UTC midnight). Same
+// fix applied to schedule.tsx and the web app's WorkerDashboard.tsx.
+function toDateKey(rawDate: string) {
+  return dayjs.utc(rawDate).format("YYYY-MM-DD")
+}
 
 export default function DashboardScreen() {
   const router = useRouter()
@@ -31,18 +41,33 @@ export default function DashboardScreen() {
   const { data: stats } = useQuery(workerDashboardstats())
   const monthly = stats?.monthly
 
+  const weekStart = useMemo(() => dayjs().startOf("isoWeek"), [])
+
   const load = useCallback(async () => {
     try {
-      const { data } = await customFetch.get<MyJobsResponse>("/workers", { params: { limit: 100 } })
+      // Scoped from the start of this week forward instead of an unbounded
+      // fetch — a worker with 100+ older assignments could otherwise never
+      // see this week's or upcoming shifts, since the backend returns the
+      // oldest assignments first when unbounded. weekStart is always <=
+      // today by definition, and the 150 cap comfortably covers a week
+      // plus a healthy upcoming window (a real test worker had ~103
+      // assignments in an entire month).
+      const { data } = await customFetch.get<MyJobsResponse>("/workers", {
+        params: {
+          start: weekStart.format("YYYY-MM-DD"),
+          status: "all",
+          limit: 150,
+        },
+      })
       setError("")
-      setJobs(data.jobs)
+      setJobs(data.jobs.map(j => ({ ...j, date: toDateKey(j.date) })))
     } catch {
       setError("Couldn't load your dashboard. Pull down to try again.")
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [weekStart])
 
   useEffect(() => {
     // Fetch the initial dashboard data when this screen mounts.
@@ -56,14 +81,13 @@ export default function DashboardScreen() {
   }
 
   const activeJob = jobs.find(j => j.status === "in-progress")
-  const jobsCompleted = jobs.filter(j => j.status === "completed").length
 
   const weekDays = useMemo(() => {
-    const weekStart = dayjs().startOf("isoWeek")
     const today = dayjs()
     return Array.from({ length: 7 }, (_, i) => {
       const date = weekStart.add(i, "day")
-      const dayJobs = jobs.filter(j => dayjs(j.date).isSame(date, "day"))
+      const dateStr = date.format("YYYY-MM-DD")
+      const dayJobs = jobs.filter(j => j.date === dateStr)
       const hours = dayJobs.reduce((sum, j) => sum + (j.hours ?? 0), 0)
       return {
         day: DAY_LETTERS[i],
@@ -73,7 +97,7 @@ export default function DashboardScreen() {
         hours,
       }
     })
-  }, [jobs])
+  }, [jobs, weekStart])
 
   const hoursThisWeek = useMemo(() => weekDays.reduce((sum, d) => sum + d.hours, 0), [weekDays])
 
@@ -85,22 +109,11 @@ export default function DashboardScreen() {
       .slice(0, UPCOMING_SHIFTS_LIMIT)
   }, [jobs])
 
-  const hoursThisMonth = useMemo(() => {
-    const monthStart = dayjs().startOf("month")
-    const monthEnd = dayjs().endOf("month")
-    return jobs
-      .filter(j => {
-        const d = dayjs(j.date)
-        return d.isAfter(monthStart) && d.isBefore(monthEnd)
-      })
-      .reduce((sum, j) => sum + (j.hours ?? 0), 0)
-  }, [jobs])
-
   const hour = new Date().getHours()
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
   const firstName = user?.fullname?.split(" ")[0] ?? ""
   const initials = user?.fullname?.slice(0, 2)?.toUpperCase() ?? ""
-
+  const insets = useSafeAreaInsets();
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center" }}>
@@ -110,9 +123,11 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 20 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 20 ,
+          paddingTop: insets.top > 0 ? insets.top + 10 : 16, // Dynamic top padding
+        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1E3A5F" />}
       >
         {error ? (
@@ -135,56 +150,42 @@ export default function DashboardScreen() {
         ) : null}
 
         {/* Header */}
-        {/* <View style={{ backgroundColor: "#1E3A5F", borderRadius: 24, padding: 20 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700" }}>{initials}</Text>
-              </View>
-              <View>
-                <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: "500" }}>{greeting}</Text>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>{firstName}</Text>
-              </View>
-            </View>
-            <Pressable
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                backgroundColor: "rgba(255,255,255,0.1)",
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "#1E3A5F",
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              hitSlop={8}
             >
-              <Bell size={16} color="#FFFFFF" />
-              <View
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: "#60A5FA",
-                  borderWidth: 2,
-                  borderColor: "#1E3A5F",
-                }}
-              />
-            </Pressable>
+              <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700" }}>{initials || "U"}</Text>
+            </View>
+            <View>
+              <Text style={{ fontSize: 12, color: "#94A3B8", fontWeight: "500" }}>{greeting}</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F172A" }}>{firstName}</Text>
+            </View>
           </View>
-
-     
-        </View> */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/profile/notifications")}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              backgroundColor: "#FFFFFF",
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            hitSlop={8}
+          >
+            <Bell size={16} color="#1E3A5F" />
+          </Pressable>
+        </View>
 
         {/* Earnings */}
         {monthly ? (
@@ -215,7 +216,7 @@ export default function DashboardScreen() {
             <View style={{ flexDirection: "row", gap: 10 }}>
               {[
                 { label: "Hours", value: `${monthly.hoursWorked?.toFixed(1)}h` },
-                { label: "Jobs", value: `${stats?.jobStats.completed ?? 0}` },
+                { label: "Jobs", value: `${monthly.completedJobs ?? 0}` },
                 { label: "£/hr avg", value: `${monthly.averagePayRate || 0}` },
               ].map(s => (
                 <View
@@ -239,7 +240,7 @@ export default function DashboardScreen() {
         {/* Active job banner */}
         {activeJob ? (
           <Pressable
-            onPress={() => router.push("/(tabs)/jobs")}
+            onPress={() => router.push("/(tabs)/clock")}
             style={({ pressed }) => ({
               backgroundColor: "#2563EB",
               borderRadius: 16,
@@ -418,6 +419,6 @@ export default function DashboardScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }
