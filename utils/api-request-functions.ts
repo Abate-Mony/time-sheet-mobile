@@ -11,6 +11,7 @@ import type {
   TimesheetPeriodType,
   TimesheetSummaryResponse,
   User,
+  WorkerDocument,
 } from "./types";
 
 // GET /companies/plan is not role-restricted server-side (only
@@ -19,6 +20,46 @@ import type {
 export const getCompanyPlan = async (): Promise<CompanyPlanInfo> => {
   const { data } = await customFetch.get<CompanyPlanInfo>("/companies/plan");
   return data;
+};
+
+export const getMyDocuments = async (): Promise<WorkerDocument[]> => {
+  const { data } = await customFetch.get<{ documents: WorkerDocument[] }>("/documents/me");
+  return data.documents;
+};
+
+export const uploadMyDocument = async ({
+  name,
+  uri,
+  fileName,
+  mimeType,
+}: {
+  name: string;
+  uri: string;
+  fileName: string;
+  mimeType: string;
+}): Promise<WorkerDocument[]> => {
+  const formData = new FormData();
+  formData.append("name", name);
+  // React Native's FormData takes a {uri, name, type} object for a file
+  // part instead of a Blob/File — axios/RN's polyfilled FormData knows how
+  // to read it off the native uri directly.
+  formData.append("document", {
+    uri,
+    name: fileName,
+    type: mimeType,
+  } as unknown as Blob);
+
+  const { data } = await customFetch.post<{ documents: WorkerDocument[] }>(
+    "/documents/me",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data.documents;
+};
+
+export const deleteMyDocument = async (documentId: string): Promise<WorkerDocument[]> => {
+  const { data } = await customFetch.delete<{ documents: WorkerDocument[] }>(`/documents/me/${documentId}`);
+  return data.documents;
 };
 
 const showSuccess = (message: string) => {

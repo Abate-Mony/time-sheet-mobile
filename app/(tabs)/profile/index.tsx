@@ -6,7 +6,9 @@ import {
   ChevronRight,
   Clock,
   Download,
+  HelpCircle,
   LogOut,
+  Paperclip,
   Phone,
   Zap,
 } from "lucide-react-native";
@@ -192,6 +194,20 @@ export default function ProfileScreen() {
       sub: "Job alerts, reminders",
       to:
         "/(tabs)/profile/notifications",
+    },
+
+    {
+      label: "My Documents",
+      icon: Paperclip,
+      sub: "ID, right-to-work, certifications",
+      to: "/(tabs)/profile/documents",
+    },
+
+    {
+      label: "Help Centre",
+      icon: HelpCircle,
+      sub: "Guides and answers",
+      to: "/(tabs)/profile/help",
     },
 
     {

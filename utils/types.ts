@@ -11,6 +11,17 @@ export type CreateJobForm = Omit<z.infer<typeof createJobSchema>, "client"> & {
 export type ClientStatus = 'active' | 'inactive'
 export type ChargeType = 'hourly' | 'fixed'
 
+// A worker's self-uploaded document (ID, right-to-work, certifications,
+// ...). Optional everywhere it's used — nothing in this app requires a
+// worker to have any on file.
+export interface WorkerDocument {
+  _id: string
+  name: string
+  url: string
+  mimeType?: string
+  uploadedAt: string
+}
+
 export interface ClientContact {
   name?: string
   role?: string

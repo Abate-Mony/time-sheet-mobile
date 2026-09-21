@@ -7,6 +7,8 @@ export default function JobsStackLayout() {
       <Stack.Screen name="edit" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="download-time-sheet" />
+      <Stack.Screen name="documents" />
+      <Stack.Screen name="help" />
     </Stack>
   )
 }
