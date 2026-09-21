@@ -139,12 +139,36 @@ export interface TimesheetSummaryResponse {
 export type JobStatus = "draft" | "published" | "completed" | "cancelled"
 export type JobPriority = "low" | "medium" | "high" | "urgent"
 
+// Optional single file a manager attaches to a job — e.g. a photo of a door
+// passcode or access instructions — visible to assigned workers.
+export interface JobAttachment {
+  url: string
+  filename: string
+  mimeType?: string
+  uploadedAt: string
+}
+
+export interface SiteContact {
+  name?: string
+  phone?: string
+  email?: string
+}
+
+// The slim shape a Job carries once it's site-backed — historical facts as
+// they were at scheduling time, never re-synced from the live Site.
+export interface JobSiteSnapshot {
+  name?: string
+  contact?: SiteContact
+  accessInstructions?: string
+  parkingInstructions?: string
+}
+
 export interface Job {
   _id: string
   company: string
   client: {
     name?: string
-  } 
+  }
   title: string
   description: string
   location: string
@@ -169,6 +193,8 @@ export interface Job {
   createdAt: string
   updatedAt: string
   minutes: number
+  attachment?: JobAttachment | null
+  siteSnapshot?: JobSiteSnapshot | null
 }
 
 // ── Job assignment ────────────────────────────────────────────────────────────
@@ -222,6 +248,32 @@ export interface WorkerJobDetails {
 export interface WorkerJob extends Omit<Job, "status"> {
   status: AssignmentStatus
   workerJobDetails: WorkerJobDetails
+}
+
+// ── Company plan ──────────────────────────────────────────────────────────────
+
+export type CompanyPlanId = "free" | "starter" | "professional" | "enterprise"
+
+export interface PlanLimits {
+  maxWorkers: number // -1 = unlimited
+  maxJobsPerMonth: number // -1 = unlimited
+  features: {
+    gpsVerification: boolean
+    recurringJobs: boolean
+    openShifts: boolean
+    advancedReports: boolean
+    aiJobAssistant: boolean
+    aiDashboardInsights: boolean
+    aiDataAssistant: boolean
+    externalApiAccess: boolean
+  }
+}
+
+export interface CompanyPlanInfo {
+  success: boolean
+  plan: CompanyPlanId
+  maxWorkers: number
+  limits: PlanLimits
 }
 
 // ── API response shapes ───────────────────────────────────────────────────────

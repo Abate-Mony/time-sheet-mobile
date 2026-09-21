@@ -5,12 +5,21 @@ import { queryClient } from "../lib/queryClient";
 import customFetch from "./customFetch";
 import { getCurrentPosition } from "./getPosition";
 import type {
+  CompanyPlanInfo,
   EditProfileForm,
   NotificationPreferences,
   TimesheetPeriodType,
   TimesheetSummaryResponse,
   User,
 } from "./types";
+
+// GET /companies/plan is not role-restricted server-side (only
+// authenticateUser/loadRestriction at the router level), so a worker can
+// read their own company's plan the same as an admin/manager can.
+export const getCompanyPlan = async (): Promise<CompanyPlanInfo> => {
+  const { data } = await customFetch.get<CompanyPlanInfo>("/companies/plan");
+  return data;
+};
 
 const showSuccess = (message: string) => {
   Toast.show({
@@ -46,8 +55,9 @@ export const changeWorkerJobStaus = async (
     | "accepted"
     | "declined"
     | "in-progress"
-    | "completed",
-  opts?: { reason?: string }
+    | "completed"
+    | "cancelled",
+  opts?: { reason?: string; release?: boolean }
 ): Promise<{
   success: boolean;
   message?: string;
@@ -73,10 +83,14 @@ export const changeWorkerJobStaus = async (
         ...(opts?.reason && {
           reason: opts.reason,
         }),
+
+        ...(opts?.release && {
+          release: true,
+        }),
       }
     );
 
-    showSuccess("Job updated successfully");
+    showSuccess(opts?.release ? "Shift released back to open shifts" : "Job updated successfully");
 
     await queryClient.invalidateQueries({
       queryKey: ["jobs"],
@@ -92,7 +106,8 @@ export const changeWorkerJobStaus = async (
 
     if (
       status === "completed" ||
-      status === "declined"
+      status === "declined" ||
+      status === "cancelled"
     ) {
       queryClient.setQueryData(
         ["active-job"],
@@ -106,6 +121,12 @@ export const changeWorkerJobStaus = async (
     await queryClient.invalidateQueries({
       queryKey: ["active-job"],
     });
+
+    if (opts?.release) {
+      await queryClient.invalidateQueries({
+        queryKey: ["open-shifts"],
+      });
+    }
 
     return {
       success: true,
