@@ -306,9 +306,21 @@ export default function DashboardScreen() {
                     >
                       {d.date}
                     </Text>
+                    {d.hasShift && !d.isToday && (
+                      <View
+                        style={{
+                          position: "absolute",
+                          bottom: -2,
+                          width: 6,
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: "#60A5FA",
+                        }}
+                      />
+                    )}
                   </View>
                   <Text style={{ fontSize: 9, color: "#94A3B8", fontWeight: "500" }}>
-                    {d.hasShift ? `${d.hours}h` : "—"}
+                    {d.hasShift ? `${d.hours.toFixed(d.hours % 1 ? 1 : 0)}h` : "—"}
                   </Text>
                 </View>
               ))}
@@ -328,7 +340,7 @@ export default function DashboardScreen() {
               <View>
                 <Text style={{ fontSize: 12, color: "#64748B" }}>Total this week</Text>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
-                  {hoursThisWeek}h <Text style={{ fontSize: 14, fontWeight: "400", color: "#94A3B8" }}>/ {WEEKLY_TARGET_HOURS}h target</Text>
+                  {hoursThisWeek.toFixed(hoursThisWeek % 1 ? 1 : 0)}h <Text style={{ fontSize: 14, fontWeight: "400", color: "#94A3B8" }}>/ {WEEKLY_TARGET_HOURS}h target</Text>
                 </Text>
               </View>
               <View style={{ flex: 1, maxWidth: 120, marginLeft: 16 }}>

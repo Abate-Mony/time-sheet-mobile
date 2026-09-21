@@ -5,6 +5,7 @@ import { AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react-native"
 import { useState } from "react"
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -57,13 +58,13 @@ export default function Login() {
       )
       await login(data.accessToken, data.refreshToken, data.user)
       router.replace("/(tabs)")
-    
+
     } catch (err) {
       console.error("Login error:", err) // Debugging log
       const msg = isAxiosError(err)
         ? err.response?.data?.msg ??
-          err.response?.data?.message ??
-          (err.response ? `Login failed (${err.response.status})` : "Cannot connect to the server")
+        err.response?.data?.message ??
+        (err.response ? `Login failed (${err.response.status})` : "Cannot connect to the server")
         : "Something went wrong"
       setError(typeof msg === "string" ? msg : "Something went wrong")
     } finally {
@@ -83,26 +84,19 @@ export default function Login() {
         >
           {/* Logo */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 32 }}>
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                backgroundColor: "#3B82F6",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>W</Text>
-            </View>
+            <Image
+              source={require('../assets/images/splash-icon.png')}
+              style={{ width: 32, height: 32, borderRadius: 8 }}
+              resizeMode="cover"
+            />
             <Text style={{ fontSize: 18, fontWeight: "600", color: "#0F172A" }}>
-              work<Text style={{ color: "#3B82F6" }}>.wrk</Text>
+              IN<Text style={{ color: "#3B82F6" }}>PRN</Text>
             </Text>
           </View>
 
           {/* Heading */}
           <View style={{ marginBottom: 28 }}
-          
+
           >
             <Text style={{ fontSize: 24, fontWeight: "700", color: "#0F172A", marginBottom: 6 }}>
               Welcome back
