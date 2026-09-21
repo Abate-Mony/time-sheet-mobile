@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "timeshift-mobile",
-    "slug": "timeshift-mobile",
+    "name": "INPRN",
+    "slug": "inprn",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "timeshiftmobile",
+    "scheme": "inprn",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "package": "com.inprn.timeshift",
+      "package": "com.inprn.app",
       "adaptiveIcon": {
         "backgroundColor": "#1E3A5F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,7 +43,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow timeshift to use your location to confirm you're on site when you clock in or out."
+          "locationWhenInUsePermission": "Allow INPRN to use your location to confirm you're on site when you clock in or out."
         }
       ],
       "expo-font",
