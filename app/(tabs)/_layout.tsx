@@ -68,10 +68,8 @@ export default function TabLayout() {
             borderTopColor: "#E2E8F0",
             borderTopWidth: 1,
             display: "flex",
-            maxWidth: 400,
-            margin: "auto",
             width: "100%",
-            borderRadius: 0
+            borderRadius: 0,
             // borderTopRightRadius:20,
             // borderTopLeftRadius:20,
           },

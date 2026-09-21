@@ -216,6 +216,50 @@ export const updateWorkerProfile = async (
   }
 };
 
+export const uploadProfilePhoto = async ({
+  uri,
+  fileName,
+  mimeType,
+}: {
+  uri: string;
+  fileName: string;
+  mimeType: string;
+}): Promise<User | null> => {
+  try {
+    const formData = new FormData();
+    // React Native's FormData takes a {uri, name, type} object for a file
+    // part instead of a Blob/File — see documents.tsx's uploadMyDocument
+    // for the same pattern.
+    formData.append("photo", {
+      uri,
+      name: fileName,
+      type: mimeType,
+    } as unknown as Blob);
+
+    const { data } = await customFetch.post<{ user: User }>(
+      "/users/current-user/photo",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    showSuccess("Profile photo updated");
+    return data.user;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return null;
+  }
+};
+
+export const deleteProfilePhoto = async (): Promise<User | null> => {
+  try {
+    const { data } = await customFetch.delete<{ user: User }>("/users/current-user/photo");
+    showSuccess("Profile photo removed");
+    return data.user;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return null;
+  }
+};
+
 export const getNotificationPreferences = async () => {
   const { data } = await customFetch.get<{
     success: boolean;

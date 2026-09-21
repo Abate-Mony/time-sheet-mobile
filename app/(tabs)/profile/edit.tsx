@@ -1,13 +1,23 @@
+import { Avatar } from "@/components/avatar"
 import { useAuth } from "@/context/AuthContext"
-import { updateWorkerProfile } from "@/utils/api-request-functions"
+import { deleteProfilePhoto, updateWorkerProfile, uploadProfilePhoto } from "@/utils/api-request-functions"
 import { editProfileSchema } from "@/utils/schema"
 import type { EditProfileForm, EditProfileFormInput, User } from "@/utils/types"
 import { zodResolver } from "@hookform/resolvers/zod"
+import * as ImagePicker from "expo-image-picker"
 import { useRouter } from "expo-router"
-import { ChevronLeft } from "lucide-react-native"
+import { Camera, ChevronLeft, Loader2 } from "lucide-react-native"
+import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import Toast from "react-native-toast-message"
+
+// Matches the backend's own limit (multerMiddleware.ts's uploadAvatar) —
+// checked client-side so a worker finds out before the request 400s, not
+// after. expo-image-picker's own `quality` compression (below) keeps most
+// photos well under this without needing a separate resize step.
+const MAX_AVATAR_BYTES = 500_000
 
 const GENDER_OPTIONS: NonNullable<User["gender"]>[] = ["Male", "Female", "Other", "Prefer not to say"]
 
@@ -19,6 +29,7 @@ function FieldError({ message }: { message?: string }) {
 export default function EditProfileScreen() {
   const router = useRouter()
   const { user, updateUser } = useAuth()
+  const [photoBusy, setPhotoBusy] = useState(false)
 
   const {
     control,
@@ -42,6 +53,41 @@ export default function EditProfileScreen() {
     }
   }
 
+  const pickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) return
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    })
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    if (asset.fileSize != null && asset.fileSize > MAX_AVATAR_BYTES) {
+      Toast.show({ type: "error", text1: "That photo is too large — try a smaller one." })
+      return
+    }
+
+    setPhotoBusy(true)
+    const updated = await uploadProfilePhoto({
+      uri: asset.uri,
+      fileName: asset.fileName ?? "photo.jpg",
+      mimeType: asset.mimeType ?? "image/jpeg",
+    })
+    if (updated) await updateUser(updated)
+    setPhotoBusy(false)
+  }
+
+  const removePhoto = async () => {
+    setPhotoBusy(true)
+    const updated = await deleteProfilePhoto()
+    if (updated) await updateUser(updated)
+    setPhotoBusy(false)
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -56,6 +102,28 @@ export default function EditProfileScreen() {
         </View>
 
         <View style={styles.card}>
+          <View style={styles.photoRow}>
+            <Pressable onPress={pickPhoto} disabled={photoBusy} style={styles.photoButton}>
+              <Avatar initials={user?.fullname?.slice(0, 3)} src={user?.profilePhoto?.url} size="xl" />
+              <View style={styles.photoBadge}>
+                {photoBusy ? (
+                  <Loader2 size={9} color="#FFFFFF" />
+                ) : (
+                  <Camera size={9} color="#FFFFFF" />
+                )}
+              </View>
+            </Pressable>
+            <View style={styles.photoInfo}>
+              <Text style={styles.photoName} numberOfLines={1}>{user?.fullname}</Text>
+              <Text style={styles.photoEmail} numberOfLines={1}>{user?.email}</Text>
+              {user?.profilePhoto && (
+                <Pressable onPress={removePhoto} disabled={photoBusy}>
+                  <Text style={styles.photoRemove}>Remove photo</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+
           <View style={styles.field}>
             <Text style={styles.label}>Full Name</Text>
             <Controller
@@ -148,6 +216,55 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#F8FAFC",
+  },
+
+  photoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+
+  photoButton: {
+    position: "relative",
+  },
+
+  photoBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#1E3A5F",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  photoInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  photoName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+
+  photoEmail: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#94A3B8",
+  },
+
+  photoRemove: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#E11D48",
   },
 
   content: {

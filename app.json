@@ -52,7 +52,14 @@
       "expo-status-bar",
       "expo-web-browser",
       "expo-notifications",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-document-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow INPRN to access your photos to set a profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

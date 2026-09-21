@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Avatar } from "@/components/avatar";
 import customFetch from "@/utils/customFetch";
 import type { User } from "@/utils/types";
 import type { WorkerDashboardStats } from "../../../utils/types/workerType.ts";
@@ -41,20 +42,6 @@ export const workerDashboardstats = () => ({
     return data;
   },
 });
-
-function Avatar({
-  initials,
-}: {
-  initials?: string;
-}) {
-  return (
-    <View style={styles.avatar}>
-      <Text style={styles.avatarText}>
-        {initials || "U"}
-      </Text>
-    </View>
-  );
-}
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -247,6 +234,8 @@ export default function ProfileScreen() {
                     0,
                     3
                   )}
+                  src={user?.profilePhoto?.url}
+                  size="xl"
                 />
               </View>
 
@@ -627,20 +616,6 @@ const styles =
       borderRadius: 999,
       padding: 4,
       backgroundColor: "#FFFFFF",
-    },
-
-    avatar: {
-      flex: 1,
-      borderRadius: 999,
-      backgroundColor: "#DBEAFE",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    avatarText: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: "#1E3A5F",
     },
 
     editButton: {

@@ -1,3 +1,4 @@
+import { ExternalLink } from "@/components/external_url"
 import { useAuth } from "@/context/AuthContext"
 import { isAxiosError } from "axios"
 import { useRouter } from "expo-router"
@@ -232,11 +233,14 @@ export default function Login() {
           </View>
 
           {/* Forgot password */}
-          <Pressable style={{ alignSelf: "flex-end", marginBottom: 20 }} hitSlop={8}>
+          {/* <Pressable style={{ alignSelf: "flex-end", marginBottom: 20 }} hitSlop={8}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: "#2563EB" }}>
               Forgot password?
             </Text>
-          </Pressable>
+          </Pressable> */}
+          <ExternalLink url="https://timeshift.inprn.com/auth/forgot-password">
+            Forget password?
+          </ExternalLink>
 
           {/* Sign in button */}
           <Pressable

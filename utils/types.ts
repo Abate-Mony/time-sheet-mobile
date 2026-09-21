@@ -11,6 +11,14 @@ export type CreateJobForm = Omit<z.infer<typeof createJobSchema>, "client"> & {
 export type ClientStatus = 'active' | 'inactive'
 export type ChargeType = 'hourly' | 'fixed'
 
+// A single uploaded file reference with no display filename — a profile
+// photo, as opposed to WorkerDocument which is shown to the user by name.
+export interface FileRef {
+  url: string
+  mimeType?: string
+  uploadedAt: string
+}
+
 // A worker's self-uploaded document (ID, right-to-work, certifications,
 // ...). Optional everywhere it's used — nothing in this app requires a
 // worker to have any on file.
@@ -83,6 +91,7 @@ export interface User {
   updatedAt: string
   phone?: string
   gender?: "Male" | "Female" | "Other" | "Prefer not to say"
+  profilePhoto?: FileRef | null
 }
 
 // Payload shape sent to the API (post-transform: no empty-string gender).
