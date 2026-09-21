@@ -5,10 +5,9 @@ import {
     useState,
 } from "react";
 
-import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import Toast from "react-native-toast-message";
-import { clearSession, getStoredUser, getToken, saveSession, saveUser } from "../utils/auth";
+import { clearSession, getStoredUser, getToken, saveRefreshToken, saveSession, saveUser } from "../utils/auth";
 import { setUnauthorizedHandler } from "../utils/authEvents";
 import { registerPushTokenWithServer } from "../utils/pushNotifications";
 import type { User } from "../utils/types";
@@ -69,7 +68,7 @@ export function AuthProvider({
     user: User
   ) {
     await saveSession(token, user);
-    await SecureStore.setItemAsync("refreshToken", refreshToken);
+    await saveRefreshToken(refreshToken);
 
     setAccessToken(token);
     setUser(user);
@@ -77,7 +76,6 @@ export function AuthProvider({
 
   async function logout() {
     await clearSession();
-    await SecureStore.deleteItemAsync("refreshToken");
 
     setAccessToken(null);
     setUser(null);
