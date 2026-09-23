@@ -2,6 +2,7 @@ import CompletedJobCard from "@/components/completedJobCard"
 import JobCard from "@/components/jobcard"
 import customFetch from "@/utils/customFetch"
 import type { MyJobsResponse, WorkerJob } from "@/utils/types"
+import { useTabBarClearance } from "@/hooks/useTabBarClearance"
 import { useFocusEffect } from "@react-navigation/native"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
@@ -67,6 +68,7 @@ function useMyJobs(params: { status: string; search: string; start: string | nul
 export default function JobsScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const tabBarClearance = useTabBarClearance()
 
   const [status, setStatus] = useState("all")
   const [search, setSearch] = useState("")
@@ -144,7 +146,7 @@ export default function JobsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
       >
         {/* Date filter — same week-strip pattern as the Schedule screen */}

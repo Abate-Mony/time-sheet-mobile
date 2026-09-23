@@ -1,4 +1,5 @@
 import customFetch from "@/utils/customFetch";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import type { CreateJobForm } from "@/utils/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
@@ -193,6 +194,7 @@ function UpcomingRow({ job, onJump }: { job: CreateJobForm; onJump: () => void }
 }
 
 export default function ScheduleScreen() {
+  const tabBarClearance = useTabBarClearance();
   const [viewedMonth, setViewedMonth] = useState(() => dayjs().startOf("month"));
   const [selectedDate, setSelectedDate] = useState(() => dayjs().format("YYYY-MM-DD"));
 
@@ -294,7 +296,7 @@ export default function ScheduleScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}

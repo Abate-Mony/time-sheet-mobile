@@ -1,5 +1,6 @@
 import { workerDashboardstats } from "@/app/(tabs)/profile"
 import { useAuth } from "@/context/AuthContext"
+import { useTabBarClearance } from "@/hooks/useTabBarClearance"
 import { useFocusEffect } from "@react-navigation/native"
 import { useQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
@@ -121,6 +122,7 @@ export default function DashboardScreen() {
   const firstName = user?.fullname?.split(" ")[0] ?? ""
   const initials = user?.fullname?.slice(0, 2)?.toUpperCase() ?? ""
   const insets = useSafeAreaInsets();
+  const tabBarClearance = useTabBarClearance();
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center" }}>
@@ -134,6 +136,7 @@ export default function DashboardScreen() {
         contentContainerStyle={{
           padding: 16, gap: 20,
           paddingTop: insets.top > 0 ? insets.top + 10 : 16, // Dynamic top padding
+          paddingBottom: tabBarClearance,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1E3A5F" />}

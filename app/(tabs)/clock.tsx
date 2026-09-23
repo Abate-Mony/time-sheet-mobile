@@ -1,4 +1,5 @@
 
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -75,7 +76,7 @@ export const activeWorkerJob = () => ({
 
 export default function ClockScreen() {
   const router = useRouter();
-  
+  const tabBarClearance = useTabBarClearance();
 
   const {
     data,
@@ -167,7 +168,7 @@ export default function ClockScreen() {
   if (!isLoading && data?.job === null) {
     return (
       <SafeAreaView edges={["top"]} style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
           <NoActiveShift nextShift={nextShiftData} />
         </ScrollView>
       </SafeAreaView>
@@ -262,7 +263,7 @@ export default function ClockScreen() {
     return (
       <SafeAreaView edges={["top"]} style={styles.screen}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
       >
         <View style={styles.completeCard}>
           <View style={styles.completeHeader}>
@@ -352,7 +353,7 @@ export default function ClockScreen() {
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
     <ScrollView
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
     >
       <View style={styles.jobCard}>
         <View style={styles.jobIcon}>

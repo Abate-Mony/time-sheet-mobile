@@ -1,3 +1,4 @@
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -47,6 +48,7 @@ export const workerDashboardstats = () => ({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const tabBarClearance = useTabBarClearance();
 
   const {
     user,
@@ -224,7 +226,7 @@ export default function ProfileScreen() {
     >
       <ScrollView
         contentContainerStyle={
-          styles.content
+          [styles.content, { paddingBottom: tabBarClearance }]
         }
         showsVerticalScrollIndicator={
           false
