@@ -1,11 +1,12 @@
 import customFetch from "@/utils/customFetch";
 import type { CreateJobForm } from "@/utils/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useFocusEffect } from "@react-navigation/native";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useRouter } from "expo-router";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -203,7 +204,7 @@ export default function ScheduleScreen() {
   // unbounded by date). A worker active long enough to have 200+ historical
   // assignments would never reach today's or future shifts that way; the
   // backend already supports start/end bounds (getMyJobs), this just uses them.
-  const { data: monthData, isLoading: monthLoading } = useQuery({
+  const { data: monthData, isLoading: monthLoading, refetch: refetchMonth } = useQuery({
     queryKey: ["worker-schedule-month", monthStart.format("YYYY-MM")],
     queryFn: async () => {
       const { data } = await customFetch.get<{ jobs: CreateJobForm[] }>("/workers", {
@@ -222,7 +223,7 @@ export default function ScheduleScreen() {
   // Anchored to today regardless of which month the calendar is showing —
   // a separate, independently-bounded query rather than widening the month
   // query, so browsing to a distant past/future month doesn't balloon it.
-  const { data: upcomingData, isLoading: upcomingLoading } = useQuery({
+  const { data: upcomingData, isLoading: upcomingLoading, refetch: refetchUpcoming } = useQuery({
     queryKey: ["worker-schedule-upcoming"],
     queryFn: async () => {
       const { data } = await customFetch.get<{ jobs: CreateJobForm[] }>("/workers", {
@@ -235,6 +236,19 @@ export default function ScheduleScreen() {
       return data;
     },
   });
+
+  // Expo Router's tab navigator keeps every tab's screen mounted in the
+  // background when you switch away — it never unmounts, so React Query's
+  // own refetchOnMount never gets a chance to fire again on switching back.
+  // Without this, coming back to Schedule after e.g. clocking out on another
+  // tab kept showing whatever was cached from the last time this screen
+  // mounted, sometimes minutes or hours stale.
+  useFocusEffect(
+    useCallback(() => {
+      refetchMonth();
+      refetchUpcoming();
+    }, [refetchMonth, refetchUpcoming])
+  );
 
   const monthJobs = useMemo(() => normalizeJobDates(monthData?.jobs ?? []), [monthData]);
   const upcomingJobs = useMemo(

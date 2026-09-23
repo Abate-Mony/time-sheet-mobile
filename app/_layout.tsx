@@ -1,9 +1,10 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/queryClient';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from "../context/AuthContext";
@@ -29,6 +30,30 @@ function SplashScreenController() {
 // Deep-links a tapped push notification to the job it's about — payloads
 // carry the same web-style `url` (e.g. "/worker/jobs/<id>") the browser
 // Web Push notifications use, so this just extracts the id from it.
+// React Query's focus-refetch machinery is a web concept by default
+// ("window" blur/focus) — on React Native nothing ever calls it, so every
+// query just sits on whatever it fetched once and never refreshes on its
+// own. This is TanStack Query's own documented React Native recipe: forward
+// app-foreground/background transitions from AppState into focusManager, so
+// "the app came back to the foreground" starts behaving like "the tab
+// regained focus" does on web, and stale queries refetch automatically
+// instead of requiring a full logout/login (which just happens to rebuild
+// every query from scratch) to see fresh data.
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== "web") {
+    focusManager.setFocused(status === "active");
+  }
+}
+
+function AppStateFocusManager() {
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", onAppStateChange);
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
 function NotificationTapHandler() {
   const router = useRouter();
 
@@ -70,6 +95,7 @@ function RootNavigator() {
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack.Protected>
       </Stack>
+      <AppStateFocusManager />
       {authenticated && <NotificationTapHandler />}
       {/* Every screen in this app sits on a light background (#F8FAFC/white)
           right at the top edge, so the status bar needs dark icons for
