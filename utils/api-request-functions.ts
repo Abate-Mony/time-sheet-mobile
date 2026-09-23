@@ -184,6 +184,21 @@ export const changeWorkerJobStaus = async (
   }
 };
 
+// Check/uncheck one item on a job's checklist — shared across every worker
+// assigned, not per-worker. No toast on success — this fires on every tap
+// and a toast per checkbox would be noisy; the checkbox itself is the
+// feedback.
+export const toggleChecklistItem = async (jobId: string, itemId: string, done: boolean): Promise<boolean> => {
+  try {
+    await customFetch.patch(`/workers/${jobId}/checklist/${itemId}`, { done });
+    await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
 export const claimOpenShift = async (jobId: string): Promise<boolean> => {
   try {
     const { data } = await customFetch.post(`/workers/open-shifts/${jobId}/claim`);

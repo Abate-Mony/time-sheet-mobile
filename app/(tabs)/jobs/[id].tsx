@@ -1,11 +1,11 @@
 import { useShiftStartGate } from "@/hooks/shiftgate";
 import { useCompanyPlan } from "@/hooks/useCompanyPlan";
-import { changeWorkerJobStaus } from "@/utils/api-request-functions";
+import { changeWorkerJobStaus, toggleChecklistItem } from "@/utils/api-request-functions";
 import customFetch from "@/utils/customFetch";
 import { formatDate, formatDuration, formatTimeUntil } from "@/utils/date";
 import { buildMapUrl, MAP_SERVICES, type MapService } from "@/utils/mapLinks";
 import type { SingleJobResponse } from "@/utils/types";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -15,8 +15,10 @@ import {
   Check,
   CheckCircle2,
   ChevronLeft,
+  Circle,
   Clock,
   Dot,
+  ListChecks,
   MapPin,
   Navigation,
   Paperclip,
@@ -167,6 +169,10 @@ export default function JobDetailScreen() {
   });
 
   const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job?.date, job?.startTime, job?.endTime);
+
+  const checklistMutation = useMutation({
+    mutationFn: ({ itemId, done }: { itemId: string; done: boolean }) => toggleChecklistItem(id!, itemId, done),
+  });
 
   const act = async (status: "accepted" | "declined" | "in-progress") => {
     if (!id) return;
@@ -364,6 +370,32 @@ export default function JobDetailScreen() {
             <View style={styles.instructionsCard}>
               <Text style={styles.instructionsTitle}>INSTRUCTIONS</Text>
               <Text style={styles.instructionsBody}>{job.instructions}</Text>
+            </View>
+          )}
+
+          {!!job.checklist && job.checklist.length > 0 && (
+            <View style={styles.instructionsCard}>
+              <View style={styles.checklistHeader}>
+                <ListChecks size={13} color="#64748B" />
+                <Text style={styles.instructionsTitle}>
+                  CHECKLIST · {job.checklist.filter(i => i.done).length}/{job.checklist.length}
+                </Text>
+              </View>
+              {job.checklist.map((item, i) => (
+                <Pressable
+                  key={item._id ?? i}
+                  disabled={!item._id || checklistMutation.isPending}
+                  onPress={() => item._id && checklistMutation.mutate({ itemId: item._id, done: !item.done })}
+                  style={styles.checklistRow}
+                >
+                  {item.done ? (
+                    <CheckCircle2 size={18} color="#059669" />
+                  ) : (
+                    <Circle size={18} color="#CBD5E1" />
+                  )}
+                  <Text style={[styles.checklistText, item.done && styles.checklistTextDone]}>{item.text}</Text>
+                </Pressable>
+              ))}
             </View>
           )}
 
@@ -648,6 +680,10 @@ const styles = StyleSheet.create({
   instructionsCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2E8F0" },
   instructionsTitle: { color: "#94A3B8", fontSize: 11, fontWeight: "800", letterSpacing: 0.5, marginBottom: 7 },
   instructionsBody: { color: "#334155", fontSize: 14, lineHeight: 20 },
+  checklistHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
+  checklistRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
+  checklistText: { flex: 1, color: "#334155", fontSize: 14 },
+  checklistTextDone: { color: "#94A3B8", textDecorationLine: "line-through" },
   attachmentCard: {
     flexDirection: "row",
     alignItems: "center",

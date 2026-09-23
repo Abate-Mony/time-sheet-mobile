@@ -215,6 +215,15 @@ export interface Job {
   minutes: number
   attachment?: JobAttachment | null
   siteSnapshot?: JobSiteSnapshot | null
+  checklist?: ChecklistItem[]
+}
+
+// Optional on-site task list, shared across every worker assigned to the
+// job (not per-worker) — see jobModel.ts's checklist field on the backend.
+export interface ChecklistItem {
+  _id?: string
+  text: string
+  done: boolean
 }
 
 // ── Job assignment ────────────────────────────────────────────────────────────
