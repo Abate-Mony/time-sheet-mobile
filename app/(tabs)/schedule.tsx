@@ -2,10 +2,9 @@ import customFetch from "@/utils/customFetch";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import type { CreateJobForm } from "@/utils/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useFocusEffect } from "@react-navigation/native";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import {

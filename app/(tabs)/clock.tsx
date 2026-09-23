@@ -1,9 +1,8 @@
 
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
-import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
     Briefcase,
     Camera,

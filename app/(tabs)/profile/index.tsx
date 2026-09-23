@@ -1,7 +1,6 @@
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
-import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import {
   Bell,
