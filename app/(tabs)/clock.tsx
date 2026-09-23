@@ -4,23 +4,23 @@ import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
-    Briefcase,
-    Camera,
-    CheckCircle2,
-    Coffee,
-    FileText,
-    MapPin,
-    RotateCcw,
-    Square,
+  Briefcase,
+  Camera,
+  CheckCircle2,
+  Coffee,
+  FileText,
+  MapPin,
+  RotateCcw,
+  Square,
 } from "lucide-react-native";
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -29,13 +29,13 @@ import customFetch from "@/utils/customFetch";
 import type { CreateJobForm, MyJobsResponse } from "@/utils/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    changeWorkerJobStaus,
-    endWorkerBreak,
-    startWorkerBreak,
+  changeWorkerJobStaus,
+  endWorkerBreak,
+  startWorkerBreak,
 } from "../../utils/api-request-functions";
 import {
-    formatSecondsAsClock,
-    formatSecondsAsDuration,
+  formatSecondsAsClock,
+  formatSecondsAsDuration,
 } from "../../utils/date";
 
 type ClockState = "working" | "break" | "done";
@@ -354,7 +354,12 @@ export default function ClockScreen() {
     <ScrollView
       contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
     >
-      <View style={styles.jobCard}>
+      <Pressable>
+
+
+      <View style={styles.jobCard}
+    
+      >
         <View style={styles.jobIcon}>
           <Briefcase size={15} color="#1E3A5F" />
         </View>
@@ -373,6 +378,7 @@ export default function ClockScreen() {
           </Text>
         </View>
       </View>
+      </Pressable>
 
       <View
         style={[
@@ -548,8 +554,8 @@ function StatCard({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
-    
+    backgroundColor: "#FFFFFF",
+
   },
 
   content: {
@@ -563,7 +569,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
   },
 
   errorTitle: {

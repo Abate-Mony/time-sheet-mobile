@@ -636,7 +636,7 @@ export default function JobDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F8FAFC" },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   content: { padding: 16, paddingBottom: 32, gap: 16 },
   backButton: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 3 },

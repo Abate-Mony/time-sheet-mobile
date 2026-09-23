@@ -124,13 +124,13 @@ export default function DashboardScreen() {
   const tabBarClearance = useTabBarClearance();
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="small" color="#1E3A5F" />
       </SafeAreaView>
     )
   }
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16, gap: 20,

@@ -224,7 +224,7 @@ export default function WorkerDocumentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F8FAFC" },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
   content: { padding: 16, paddingBottom: 32, gap: 16 },
   backButton: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 3 },
   backText: { color: "#64748B", fontSize: 14, fontWeight: "600" },
