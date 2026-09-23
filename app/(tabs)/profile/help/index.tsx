@@ -173,7 +173,7 @@ export default function HelpCentreScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFFFF" },
+  screen: { flex: 1, backgroundColor: "#F5F5F5" },
   content: { padding: 16, paddingBottom: 32, gap: 16 },
   flex1: { flex: 1 },
   backButton: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 3 },

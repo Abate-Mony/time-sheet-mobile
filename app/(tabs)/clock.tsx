@@ -48,12 +48,12 @@ interface WorkerBreak {
 interface WorkerJobWithDetails extends CreateJobForm {
   workerJobDetails: {
     workerStatus:
-      | "pending"
-      | "accepted"
-      | "declined"
-      | "in-progress"
-      | "completed"
-      | "cancelled";
+    | "pending"
+    | "accepted"
+    | "declined"
+    | "in-progress"
+    | "completed"
+    | "cancelled";
     assignmentId: string;
     acceptedAt: string;
     declinedAt: string;
@@ -207,12 +207,12 @@ export default function ClockScreen() {
   const progress =
     timing.totalSeconds > 0
       ? Math.min(
-          Math.max(
-            (elapsedSeconds / timing.totalSeconds) * 100,
-            0
-          ),
-          100
-        )
+        Math.max(
+          (elapsedSeconds / timing.totalSeconds) * 100,
+          0
+        ),
+        100
+      )
       : 0;
 
   const clockState: ClockState = doneSnapshot
@@ -261,277 +261,284 @@ export default function ClockScreen() {
   if (clockState === "done" && doneSnapshot) {
     return (
       <SafeAreaView edges={["top"]} style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
-      >
-        <View style={styles.completeCard}>
-          <View style={styles.completeHeader}>
-            <View style={styles.completeIcon}>
-              <CheckCircle2 size={32} color="#FFFFFF" />
-            </View>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
+        >
+          <View style={styles.completeCard}>
+            <View style={styles.completeHeader}>
+              <View style={styles.completeIcon}>
+                <CheckCircle2 size={32} color="#FFFFFF" />
+              </View>
 
-            <Text style={styles.completeTitle}>
-              Shift Complete!
-            </Text>
+              <Text style={styles.completeTitle}>
+                Shift Complete!
+              </Text>
 
-            <Text style={styles.completeSubtitle}>
-              {job.title?.split("—")[0]?.trim()}
-            </Text>
-          </View>
-
-          <View style={styles.completeBody}>
-            <View style={styles.statsRow}>
-              <StatCard
-                label="Total Time"
-                value={formatSecondsAsDuration(
-                  doneSnapshot.elapsedSeconds
-                )}
-              />
-              <StatCard
-                label="Break Time"
-                value={formatSecondsAsDuration(
-                  doneSnapshot.breakSeconds
-                )}
-              />
-              <StatCard
-                label="Breaks Taken"
-                value={String(doneSnapshot.breaksTaken)}
-              />
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                ✓ Your hours have been recorded automatically and
-                sent to your manager.
+              <Text style={styles.completeSubtitle}>
+                {job.title?.split("—")[0]?.trim()}
               </Text>
             </View>
 
-            <Pressable style={styles.outlineButton}>
-              <Camera size={16} color="#94A3B8" />
-              <Text style={styles.outlineButtonText}>
-                Upload Site Photos
-              </Text>
-            </Pressable>
+            <View style={styles.completeBody}>
+              <View style={styles.statsRow}>
+                <StatCard
+                  label="Total Time"
+                  value={formatSecondsAsDuration(
+                    doneSnapshot.elapsedSeconds
+                  )}
+                />
+                <StatCard
+                  label="Break Time"
+                  value={formatSecondsAsDuration(
+                    doneSnapshot.breakSeconds
+                  )}
+                />
+                <StatCard
+                  label="Breaks Taken"
+                  value={String(doneSnapshot.breaksTaken)}
+                />
+              </View>
 
-            {!showNote ? (
-              <Pressable
-                style={styles.outlineButton}
-                onPress={() => setShowNote(true)}
-              >
-                <FileText size={16} color="#94A3B8" />
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>
+                  ✓ Your hours have been recorded automatically and
+                  sent to your manager.
+                </Text>
+              </View>
+
+              <Pressable style={styles.outlineButton}>
+                <Camera size={16} color="#94A3B8" />
                 <Text style={styles.outlineButtonText}>
-                  Add a Note
+                  Upload Site Photos
                 </Text>
               </Pressable>
-            ) : (
-              <TextInput
-                value={note}
-                onChangeText={setNote}
-                placeholder="Any notes for your manager..."
-                placeholderTextColor="#94A3B8"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                style={styles.textArea}
-              />
-            )}
 
-            <Pressable
-              style={styles.primaryButton}
-              onPress={() => router.replace("/(tabs)")}
-            >
-              <Text style={styles.primaryButtonText}>Done</Text>
-            </Pressable>
+              {!showNote ? (
+                <Pressable
+                  style={styles.outlineButton}
+                  onPress={() => setShowNote(true)}
+                >
+                  <FileText size={16} color="#94A3B8" />
+                  <Text style={styles.outlineButtonText}>
+                    Add a Note
+                  </Text>
+                </Pressable>
+              ) : (
+                <TextInput
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Any notes for your manager..."
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  style={styles.textArea}
+                />
+              )}
+
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() => router.replace("/(tabs)")}
+              >
+                <Text style={styles.primaryButtonText}>Done</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
-    <ScrollView
-      contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
-    >
-      <Pressable>
-
-
-      <View style={styles.jobCard}
-    
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
       >
-        <View style={styles.jobIcon}>
-          <Briefcase size={15} color="#1E3A5F" />
-        </View>
+        <Pressable
+          onPress={() => {
+            router.push({
+              pathname: "/jobs/[id]",
+              params: { id: job._id! },
+            })
+          }}
+        >
 
-        <View style={styles.jobInfo}>
-          <Text style={styles.mutedLabel}>Current Job</Text>
-          <Text style={styles.jobTitle} numberOfLines={1}>
-            {job.title}
-          </Text>
-        </View>
 
-        <View style={styles.scheduleInfo}>
-          <Text style={styles.scheduleLabel}>Scheduled</Text>
-          <Text style={styles.scheduleTime}>
-            {job.startTime}–{job.endTime}
-          </Text>
-        </View>
-      </View>
-      </Pressable>
+          <View style={styles.jobCard}
 
-      <View
-        style={[
-          styles.timerCard,
-          clockState === "break" && styles.timerCardBreak,
-        ]}
-      >
-        <View style={styles.stateRow}>
-          <View
-            style={[
-              styles.statusDot,
-              clockState === "break" && styles.statusDotBreak,
-            ]}
-          />
-
-          <Text
-            style={[
-              styles.stateText,
-              clockState === "break" && styles.stateTextBreak,
-            ]}
           >
-            {clockState === "break"
-              ? "ON BREAK"
-              : "RECORDING HOURS"}
+            <View style={styles.jobIcon}>
+              <Briefcase size={15} color="#1E3A5F" />
+            </View>
+
+            <View style={styles.jobInfo}>
+              <Text style={styles.mutedLabel}>Current Job</Text>
+              <Text style={styles.jobTitle} numberOfLines={1}>
+                {job.title}
+              </Text>
+            </View>
+
+            <View style={styles.scheduleInfo}>
+              <Text style={styles.scheduleLabel}>Scheduled</Text>
+              <Text style={styles.scheduleTime}>
+                {job.startTime}–{job.endTime}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+
+        <View
+          style={[
+            styles.timerCard,
+            clockState === "break" && styles.timerCardBreak,
+          ]}
+        >
+          <View style={styles.stateRow}>
+            <View
+              style={[
+                styles.statusDot,
+                clockState === "break" && styles.statusDotBreak,
+              ]}
+            />
+
+            <Text
+              style={[
+                styles.stateText,
+                clockState === "break" && styles.stateTextBreak,
+              ]}
+            >
+              {clockState === "break"
+                ? "ON BREAK"
+                : "RECORDING HOURS"}
+            </Text>
+          </View>
+
+          <Text style={styles.timerText}>
+            {clock.h}:{clock.m}:{clock.s}
           </Text>
+
+          <Text style={styles.timerCaption}>
+            {clockState === "break"
+              ? "break duration"
+              : "time elapsed"}
+          </Text>
+
+          {clockState === "working" && breakSeconds > 0 && (
+            <View style={styles.breakBadge}>
+              <Coffee size={13} color="#94A3B8" />
+              <Text style={styles.breakBadgeText}>
+                Break: {formatSecondsAsDuration(breakSeconds)} ·{" "}
+                {breaksList.length} taken
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.locationRow}>
+            <MapPin size={13} color="#64748B" />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {job.location}
+            </Text>
+          </View>
+
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${progress}%` },
+              ]}
+            />
+          </View>
         </View>
 
-        <Text style={styles.timerText}>
-          {clock.h}:{clock.m}:{clock.s}
-        </Text>
+        {clockState === "working" && (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={[
+                styles.breakButton,
+                isBreakActionLoading && styles.disabled,
+              ]}
+              onPress={startBreak}
+              disabled={isBreakActionLoading}
+            >
+              {isBreakActionLoading ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Coffee size={17} color="#B45309" />
+              )}
 
-        <Text style={styles.timerCaption}>
-          {clockState === "break"
-            ? "break duration"
-            : "time elapsed"}
-        </Text>
+              <Text style={styles.breakButtonText}>
+                Take Break
+              </Text>
+            </Pressable>
 
-        {clockState === "working" && breakSeconds > 0 && (
-          <View style={styles.breakBadge}>
-            <Coffee size={13} color="#94A3B8" />
-            <Text style={styles.breakBadgeText}>
-              Break: {formatSecondsAsDuration(breakSeconds)} ·{" "}
-              {breaksList.length} taken
-            </Text>
+            <Pressable
+              style={styles.finishButton}
+              onPress={finish}
+            >
+              <Square
+                size={14}
+                color="#FFFFFF"
+                fill="#FFFFFF"
+              />
+              <Text style={styles.finishButtonText}>
+                Finish Work
+              </Text>
+            </Pressable>
           </View>
         )}
 
-        <View style={styles.locationRow}>
-          <MapPin size={13} color="#64748B" />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {job.location}
-          </Text>
-        </View>
+        {clockState === "break" && (
+          <View style={styles.breakActions}>
+            <Pressable
+              style={[
+                styles.resumeButton,
+                isBreakActionLoading && styles.disabled,
+              ]}
+              onPress={endBreak}
+              disabled={isBreakActionLoading}
+            >
+              {isBreakActionLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <RotateCcw size={17} color="#FFFFFF" />
+              )}
 
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${progress}%` },
-            ]}
+              <Text style={styles.resumeButtonText}>
+                Resume Work
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.finishInsteadButton}
+              onPress={finish}
+            >
+              <Square size={14} color="#475569" fill="#475569" />
+              <Text style={styles.finishInsteadText}>
+                Finish Shift Instead
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        <View style={styles.statsRow}>
+          <StatCard
+            label="Clocked In"
+            value={dayjs(workerJobDetails.checkedInAt).format(
+              "HH:mm"
+            )}
+          />
+          <StatCard
+            label="Billable"
+            value={formatSecondsAsDuration(
+              Math.max(elapsedSeconds - breakSeconds, 0)
+            )}
+          />
+          <StatCard
+            label="Est. Finish"
+            value={job.endTime ?? "--:--"}
           />
         </View>
-      </View>
-
-      {clockState === "working" && (
-        <View style={styles.actionRow}>
-          <Pressable
-            style={[
-              styles.breakButton,
-              isBreakActionLoading && styles.disabled,
-            ]}
-            onPress={startBreak}
-            disabled={isBreakActionLoading}
-          >
-            {isBreakActionLoading ? (
-              <ActivityIndicator size="small" />
-            ) : (
-              <Coffee size={17} color="#B45309" />
-            )}
-
-            <Text style={styles.breakButtonText}>
-              Take Break
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.finishButton}
-            onPress={finish}
-          >
-            <Square
-              size={14}
-              color="#FFFFFF"
-              fill="#FFFFFF"
-            />
-            <Text style={styles.finishButtonText}>
-              Finish Work
-            </Text>
-          </Pressable>
-        </View>
-      )}
-
-      {clockState === "break" && (
-        <View style={styles.breakActions}>
-          <Pressable
-            style={[
-              styles.resumeButton,
-              isBreakActionLoading && styles.disabled,
-            ]}
-            onPress={endBreak}
-            disabled={isBreakActionLoading}
-          >
-            {isBreakActionLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <RotateCcw size={17} color="#FFFFFF" />
-            )}
-
-            <Text style={styles.resumeButtonText}>
-              Resume Work
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.finishInsteadButton}
-            onPress={finish}
-          >
-            <Square size={14} color="#475569" fill="#475569" />
-            <Text style={styles.finishInsteadText}>
-              Finish Shift Instead
-            </Text>
-          </Pressable>
-        </View>
-      )}
-
-      <View style={styles.statsRow}>
-        <StatCard
-          label="Clocked In"
-          value={dayjs(workerJobDetails.checkedInAt).format(
-            "HH:mm"
-          )}
-        />
-        <StatCard
-          label="Billable"
-          value={formatSecondsAsDuration(
-            Math.max(elapsedSeconds - breakSeconds, 0)
-          )}
-        />
-        <StatCard
-          label="Est. Finish"
-          value={job.endTime ?? "--:--"}
-        />
-      </View>
-    </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -554,7 +561,7 @@ function StatCard({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F5F5F5",
 
   },
 
@@ -569,7 +576,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F5F5F5",
   },
 
   errorTitle: {
