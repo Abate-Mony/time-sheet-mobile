@@ -1,5 +1,7 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { useCallback } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -57,8 +59,18 @@ export default function ProfileScreen() {
   const {
     data,
     isLoading,
+    refetch,
   } = useQuery(
     workerDashboardstats()
+  );
+
+  // Tab navigator keeps this screen mounted on switching away — refetch on
+  // every return to the tab, not just the first mount, same fix as Home,
+  // Jobs and Schedule.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
   );
 
   if (isLoading || !data) {

@@ -1,4 +1,5 @@
 
+import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useRouter } from "expo-router";
@@ -26,7 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NoActiveShift } from "@/components/NoActiveShift";
 import customFetch from "@/utils/customFetch";
 import type { CreateJobForm, MyJobsResponse } from "@/utils/types";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     changeWorkerJobStaus,
     endWorkerBreak,
@@ -101,7 +102,7 @@ export default function ClockScreen() {
     return () => clearInterval(id);
   }, []);
 
-  const { data: nextShiftData } = useQuery({
+  const { data: nextShiftData, refetch: refetchNextShift } = useQuery({
     queryKey: ["jobs", "accepted", "next"],
     queryFn: async () => {
       const { data } = await customFetch.get<MyJobsResponse>("/workers", {
@@ -111,6 +112,18 @@ export default function ClockScreen() {
     },
     enabled: !isLoading && data?.job === null,
   });
+
+  // Tab navigator keeps this screen mounted on switching away — refetch on
+  // every return to the tab, not just the first mount, same fix as Home,
+  // Jobs, Profile and Schedule. Matters most here: clocking in/out on
+  // another device (or this one, via a route that isn't this screen) should
+  // never leave this tab showing a stale "not clocked in" state.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      refetchNextShift();
+    }, [refetch, refetchNextShift])
+  );
 
   const workerJobDetails = job?.workerJobDetails;
   const breaksList = workerJobDetails?.breaks ?? [];

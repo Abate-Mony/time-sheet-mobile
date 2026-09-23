@@ -2,11 +2,12 @@ import CompletedJobCard from "@/components/completedJobCard"
 import JobCard from "@/components/jobcard"
 import customFetch from "@/utils/customFetch"
 import type { MyJobsResponse, WorkerJob } from "@/utils/types"
+import { useFocusEffect } from "@react-navigation/native"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
 import { useRouter } from "expo-router"
 import { CalendarClock, ChevronLeft, ChevronRight, Repeat2, Search, X } from "lucide-react-native"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -91,6 +92,15 @@ export default function JobsScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useMyJobs({ status, search, start: selectedDate, end: selectedDate })
+
+  // Tab navigator keeps this screen mounted on switching away — refetch on
+  // every return to the tab, not just the first mount, same fix as Home and
+  // Schedule.
+  useFocusEffect(
+    useCallback(() => {
+      refetch()
+    }, [refetch])
+  )
 
   const jobs: WorkerJob[] = data?.pages.flatMap((p) => p.jobs) ?? []
   const total = data?.pages[0]?.total ?? 0

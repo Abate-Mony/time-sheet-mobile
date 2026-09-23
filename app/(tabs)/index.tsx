@@ -1,18 +1,18 @@
 import { workerDashboardstats } from "@/app/(tabs)/profile"
 import { useAuth } from "@/context/AuthContext"
+import { useFocusEffect } from "@react-navigation/native"
 import { useQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
 import isoWeek from "dayjs/plugin/isoWeek"
 import utc from "dayjs/plugin/utc"
 import { useRouter } from "expo-router"
 import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Timer, Zap } from "lucide-react-native"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import customFetch from "../../utils/customFetch"
 import { formatDate } from "../../utils/date"
 import type { MyJobsResponse, WorkerJob } from "../../utils/types"
-
 const UPCOMING_SHIFTS_LIMIT = 5
 
 dayjs.extend(isoWeek)
@@ -38,7 +38,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
 
-  const { data: stats } = useQuery(workerDashboardstats())
+  const { data: stats, refetch: refetchStats } = useQuery(workerDashboardstats())
   const monthly = stats?.monthly
 
   const weekStart = useMemo(() => dayjs().startOf("isoWeek"), [])
@@ -69,11 +69,18 @@ export default function DashboardScreen() {
     }
   }, [weekStart])
 
-  useEffect(() => {
-    // Fetch the initial dashboard data when this screen mounts.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
-  }, [load])
+  // Covers both the initial mount (useFocusEffect fires on first focus too)
+  // and every return to this tab — the tab navigator keeps this screen
+  // mounted when you switch away, so a separate mount-only effect would
+  // never fire again on switching back, leaving Home showing whatever was
+  // fetched the first time the app opened (e.g. stale after clocking in/out
+  // elsewhere).
+  useFocusEffect(
+    useCallback(() => {
+      load()
+      refetchStats()
+    }, [load, refetchStats])
+  )
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -121,13 +128,14 @@ export default function DashboardScreen() {
       </SafeAreaView>
     )
   }
-
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 20 ,
+        contentContainerStyle={{
+          padding: 16, gap: 20,
           paddingTop: insets.top > 0 ? insets.top + 10 : 16, // Dynamic top padding
         }}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1E3A5F" />}
       >
         {error ? (
