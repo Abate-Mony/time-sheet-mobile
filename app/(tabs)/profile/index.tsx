@@ -12,6 +12,7 @@ import {
   LogOut,
   Paperclip,
   Phone,
+  Trash2,
   Zap,
 } from "lucide-react-native";
 import {
@@ -25,6 +26,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
+import { requestAccountDeletion } from "@/utils/api-request-functions";
 import customFetch from "@/utils/customFetch";
 import type { User } from "@/utils/types";
 import type { WorkerDashboardStats } from "../../../utils/types/workerType.ts";
@@ -115,6 +117,29 @@ export default function ProfileScreen() {
             await logout();
 
             router.replace("/login");
+          },
+        },
+      ]
+    );
+  };
+
+  // There's no self-service deletion here (see requestAccountDeletion's own
+  // comment) — this just gets a real, documented request in front of a
+  // human who can actually act on it.
+  const handleRequestDeletion = () => {
+    Alert.alert(
+      "Request Account Deletion",
+      "This sends a request to your company admin to have your INPRN account deleted. This can't be undone once they action it.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Send Request",
+          style: "destructive",
+          onPress: async () => {
+            await requestAccountDeletion();
           },
         },
       ]
@@ -557,6 +582,39 @@ export default function ProfileScreen() {
               color="#F59E0B"
             />
           </Pressable>
+
+          {/* Request Account Deletion */}
+          <Pressable
+            onPress={handleRequestDeletion}
+            style={styles.settingsRow}
+          >
+            <View
+              style={styles.settingsIcon}
+            >
+              <Trash2
+                size={15}
+                color="#DC2626"
+              />
+            </View>
+
+            <View style={styles.flex1}>
+              <Text
+                style={
+                  styles.deleteAccountTitle
+                }
+              >
+                Request Account Deletion
+              </Text>
+
+              <Text
+                style={
+                  styles.settingsSub
+                }
+              >
+                Sends a request to your admin
+              </Text>
+            </View>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -826,6 +884,12 @@ const styles =
       fontSize: 14,
       fontWeight: "700",
       color: "#E11D48",
+    },
+
+    deleteAccountTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#DC2626",
     },
 
     flex1: {

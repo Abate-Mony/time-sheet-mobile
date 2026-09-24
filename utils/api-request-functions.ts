@@ -199,6 +199,21 @@ export const toggleChecklistItem = async (jobId: string, itemId: string, done: b
   }
 };
 
+// This app has no in-app account creation (a company admin provisions every
+// worker account), so there's nothing to self-service delete here either —
+// this sends a documented request to the company's admin(s), who can
+// deactivate/remove the account from the web dashboard.
+export const requestAccountDeletion = async (reason?: string): Promise<boolean> => {
+  try {
+    await customFetch.post("/workers/me/request-deletion", reason ? { reason } : {});
+    showSuccess("Your request has been sent to your company admin.");
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
 export const claimOpenShift = async (jobId: string): Promise<boolean> => {
   try {
     const { data } = await customFetch.post(`/workers/open-shifts/${jobId}/claim`);
