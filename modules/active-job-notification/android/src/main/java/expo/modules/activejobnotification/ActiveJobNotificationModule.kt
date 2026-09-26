@@ -172,6 +172,7 @@ class ActiveJobNotificationModule : Module() {
   }
 
   private fun cancel() {
+    Log.i(TAG, "cancel()")
     NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
   }
 }

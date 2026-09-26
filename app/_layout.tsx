@@ -89,7 +89,7 @@ function NotificationTapHandler() {
 function ActiveJobNotificationManager() {
   const { data } = useQuery(activeWorkerJob());
   const job = (data && "job" in data ? data.job : null) as ActiveJobNotificationJob | null;
-  const isInProgress = job?.workerJobDetails?.workerStatus === "in-progress";
+  const isInProgress = job?.workerJobDetails?.status === "in-progress";
 
   useEffect(() => {
     reconcileActiveJobNotification(job);

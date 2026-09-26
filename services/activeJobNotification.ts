@@ -14,7 +14,7 @@ export interface ActiveJobNotificationJob {
   startTime?: string | null;
   endTime?: string | null;
   workerJobDetails: {
-    workerStatus?: string;
+    status?: string;
     assignmentId: string;
     checkedInAt?: string;
   };
@@ -133,7 +133,7 @@ export async function stopActiveJobNotification(): Promise<void> {
 // re-resolves (app launch, focus, mutation-triggered invalidation): both
 // show() and cancel() are idempotent on the native side.
 export async function reconcileActiveJobNotification(job: ActiveJobNotificationJob | null): Promise<void> {
-  const isActive = !!job && job.workerJobDetails?.workerStatus === "in-progress" && !!job.workerJobDetails.checkedInAt;
+  const isActive = !!job && job.workerJobDetails?.status === "in-progress" && !!job.workerJobDetails.checkedInAt;
 
   if (isActive) {
     await startActiveJobNotification(job!);
