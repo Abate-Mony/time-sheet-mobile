@@ -14,6 +14,7 @@ import {
   updateActiveJobNotification,
   type ActiveJobNotificationJob,
 } from "../services/activeJobNotification";
+import { syncOfflineClockQueue } from "../utils/offlineClockSync";
 import { subscribeToNotificationTaps } from "../utils/pushNotifications";
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -54,6 +55,25 @@ function onAppStateChange(status: AppStateStatus) {
 function AppStateFocusManager() {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", onAppStateChange);
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
+// Retries any queued offline clock-in/out (utils/offlineClockQueue.ts) on
+// app launch and every time the app returns to the foreground — the two
+// moments most likely to mean "signal is back". Gated on `authenticated`
+// (not just mounted unconditionally like AppStateFocusManager) because a
+// sync attempt while logged out would 401, which reads identically to a
+// real server rejection and would wrongly discard the queued action.
+function OfflineSyncManager() {
+  useEffect(() => {
+    syncOfflineClockQueue();
+
+    const subscription = AppState.addEventListener("change", status => {
+      if (status === "active") syncOfflineClockQueue();
+    });
     return () => subscription.remove();
   }, []);
 
@@ -134,6 +154,7 @@ function RootNavigator() {
       </Stack>
       <AppStateFocusManager />
       {authenticated && <NotificationTapHandler />}
+      {authenticated && <OfflineSyncManager />}
       {authenticated && Platform.OS === "android" && <ActiveJobNotificationManager />}
       {/* Every screen in this app sits on a light background (#F8FAFC/white)
           right at the top edge, so the status bar needs dark icons for

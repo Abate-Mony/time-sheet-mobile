@@ -37,6 +37,7 @@ import {
   formatSecondsAsClock,
   formatSecondsAsDuration,
 } from "../../utils/date";
+import { syncOfflineClockQueue } from "../../utils/offlineClockSync";
 
 type ClockState = "working" | "break" | "done";
 
@@ -122,6 +123,10 @@ export default function ClockScreen() {
     useCallback(() => {
       refetch();
       refetchNextShift();
+      // Catches a reconnect that happened while the app stayed
+      // foregrounded (walked back into signal without backgrounding) —
+      // app-launch/foreground is already covered globally in _layout.tsx.
+      syncOfflineClockQueue();
     }, [refetch, refetchNextShift])
   );
 

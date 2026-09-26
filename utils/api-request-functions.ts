@@ -4,10 +4,12 @@ import { queryClient } from "../lib/queryClient";
 
 import customFetch from "./customFetch";
 import { getCurrentPosition } from "./getPosition";
+import { enqueueClockAction } from "./offlineClockQueue";
 import type {
   CompanyPlanInfo,
   EditProfileForm,
   NotificationPreferences,
+  SingleJobResponse,
   TimesheetPeriodType,
   TimesheetSummaryResponse,
   User,
@@ -90,6 +92,17 @@ const getApiErrorMessage = (err: unknown): string => {
     : "Something went wrong.";
 };
 
+function isNetworkError(err: unknown): boolean {
+  // A response means the server was reached (and rejected the request for
+  // a real reason) — no response at all is what a dead-zone/no-signal
+  // failure looks like to axios.
+  return isAxiosError(err) && !err.response;
+}
+
+function generateQueueId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export const changeWorkerJobStaus = async (
   jobId: string,
   status:
@@ -98,20 +111,22 @@ export const changeWorkerJobStaus = async (
     | "in-progress"
     | "completed"
     | "cancelled",
-  opts?: { reason?: string; release?: boolean }
+  opts?: { reason?: string; release?: boolean; jobSnapshot?: SingleJobResponse["job"] }
 ): Promise<{
   success: boolean;
   message?: string;
+  queuedOffline?: boolean;
 }> => {
+  const needsLocation =
+    status === "in-progress" ||
+    status === "completed";
+
+  // Never throws (see getPosition.ts) — safe outside the try below.
+  const location = needsLocation
+    ? await getCurrentPosition()
+    : undefined;
+
   try {
-    const needsLocation =
-      status === "in-progress" ||
-      status === "completed";
-
-    const location = needsLocation
-      ? await getCurrentPosition()
-      : undefined;
-
     await customFetch.patch(
       `/workers/${jobId}/status`,
       {
@@ -173,6 +188,53 @@ export const changeWorkerJobStaus = async (
       success: true,
     };
   } catch (err) {
+    // Only clock-in/out are eligible for offline queueing — the two
+    // actions a worker needs to take physically at a job site regardless
+    // of signal. Accept/decline/cancel can just wait for a real connection.
+    if (
+      (status === "in-progress" || status === "completed") &&
+      isNetworkError(err)
+    ) {
+      const occurredAt = new Date().toISOString();
+
+      await enqueueClockAction({
+        id: generateQueueId(),
+        jobId,
+        status,
+        occurredAt,
+        location: location ?? null,
+      });
+
+      if (status === "completed") {
+        queryClient.setQueryData(["active-job"], { success: true, job: null });
+      } else if (opts?.jobSnapshot) {
+        // Only the caller viewing the job's own detail page has the full
+        // job data on hand to fake this with — good enough coverage (that's
+        // the only place "in-progress" is triggered from). Without it, the
+        // active-job screen just won't reflect the clock-in until sync.
+        const snapshot = opts.jobSnapshot;
+        queryClient.setQueryData(["active-job"], {
+          job: {
+            ...snapshot,
+            status: "in-progress",
+            workerJobDetails: {
+              ...(snapshot.workerJobDetails ?? {}),
+              status: "in-progress",
+              checkedInAt: occurredAt,
+            },
+          },
+        });
+      }
+
+      Toast.show({
+        type: "info",
+        text1: status === "in-progress" ? "Clocked in — offline" : "Clocked out — offline",
+        text2: "No connection — this will sync automatically once you're back online.",
+      });
+
+      return { success: true, queuedOffline: true };
+    }
+
     const message = getApiErrorMessage(err);
 
     showError(message);

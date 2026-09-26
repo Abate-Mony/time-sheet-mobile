@@ -183,7 +183,11 @@ export default function JobDetailScreen() {
     setLoadingAction(action);
 
     try {
-      const result = await changeWorkerJobStaus(id, status);
+      const result = await changeWorkerJobStaus(
+        id,
+        status,
+        status === "in-progress" && job ? { jobSnapshot: job } : undefined
+      );
       if (!result.success) return;
 
       if (status === "in-progress") {
