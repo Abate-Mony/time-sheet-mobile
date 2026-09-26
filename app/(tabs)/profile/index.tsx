@@ -1,7 +1,6 @@
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -15,6 +14,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react-native";
+import { useCallback } from "react";
 import {
   Alert,
   Pressable,
@@ -239,7 +239,7 @@ export default function ProfileScreen() {
       label: "Contact Manager",
       icon: Phone,
       sub: "Get in touch",
-      to: undefined,
+       to: "/(tabs)/profile/contactmanager",
     },
   ];
 
