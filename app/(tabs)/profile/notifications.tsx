@@ -41,6 +41,12 @@ const SECTIONS: {
       { event: 'timesheet_rejected', label: 'Timesheet rejected', description: 'When your timesheet is rejected' },
     ],
   },
+  {
+    title: 'Time off',
+    rows: [
+      { event: 'time_off_reviewed', label: 'Request reviewed', description: 'When your manager approves or declines a time-off request' },
+    ],
+  },
 ]
 
 function ChannelSwitch({

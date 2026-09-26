@@ -115,6 +115,8 @@ export type NotificationEvent =
   | "timesheet_submitted"
   | "timesheet_approved"
   | "timesheet_rejected"
+  | "time_off_requested"
+  | "time_off_reviewed"
 
 export type EventNotificationPreference = {
   email: boolean
@@ -130,6 +132,27 @@ export interface NotificationPreferences {
   pushEnabled: boolean
   inAppEnabled: boolean
   events: Record<NotificationEvent, EventNotificationPreference>
+}
+
+// ── Time off ──────────────────────────────────────────────────────────────────
+
+export type TimeOffType = "vacation" | "sick" | "personal" | "other"
+export type TimeOffStatus = "pending" | "approved" | "rejected" | "cancelled"
+
+export interface TimeOffRequest {
+  _id: string
+  worker: string
+  company: string
+  startDate: string
+  endDate: string
+  type: TimeOffType
+  reason: string
+  status: TimeOffStatus
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  managerNotes?: string
+  createdAt: string
+  updatedAt: string
 }
 
 // ── Timesheets ────────────────────────────────────────────────────────────────

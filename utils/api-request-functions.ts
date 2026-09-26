@@ -10,6 +10,8 @@ import type {
   EditProfileForm,
   NotificationPreferences,
   SingleJobResponse,
+  TimeOffRequest,
+  TimeOffType,
   TimesheetPeriodType,
   TimesheetSummaryResponse,
   User,
@@ -254,6 +256,40 @@ export const toggleChecklistItem = async (jobId: string, itemId: string, done: b
   try {
     await customFetch.patch(`/workers/${jobId}/checklist/${itemId}`, { done });
     await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const requestTimeOff = async (params: {
+  startDate: string;
+  endDate: string;
+  type: TimeOffType;
+  reason?: string;
+}): Promise<boolean> => {
+  try {
+    await customFetch.post("/time-off/me", params);
+    showSuccess("Your time-off request has been sent to your manager.");
+    await queryClient.invalidateQueries({ queryKey: ["time-off", "me"] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const getMyTimeOffRequests = async (): Promise<TimeOffRequest[]> => {
+  const { data } = await customFetch.get<{ requests: TimeOffRequest[] }>("/time-off/me");
+  return data.requests;
+};
+
+export const cancelTimeOffRequest = async (id: string): Promise<boolean> => {
+  try {
+    await customFetch.patch(`/time-off/me/${id}/cancel`);
+    showSuccess("Request cancelled.");
+    await queryClient.invalidateQueries({ queryKey: ["time-off", "me"] });
     return true;
   } catch (err) {
     showError(getApiErrorMessage(err));

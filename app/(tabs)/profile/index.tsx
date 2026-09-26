@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
+  CalendarOff,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -226,6 +227,13 @@ export default function ProfileScreen() {
       icon: Paperclip,
       sub: "ID, right-to-work, certifications",
       to: "/(tabs)/profile/documents",
+    },
+
+    {
+      label: "Time Off",
+      icon: CalendarOff,
+      sub: "Request time off, track status",
+      to: "/(tabs)/profile/time-off",
     },
 
     {

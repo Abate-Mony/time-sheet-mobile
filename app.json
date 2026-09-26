@@ -67,7 +67,8 @@
           "photosPermission": "Allow INPRN to access your photos to set a profile picture."
         }
       ],
-      "./plugins/withGradleHeap.js"
+      "./plugins/withGradleHeap.js",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
