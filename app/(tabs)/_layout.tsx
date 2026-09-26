@@ -24,18 +24,34 @@ function TabIcon({
 }) {
   return (
     <View
-      style={{
-        alignItems: "center",
+      style={
+        [
+       
+        
+   {
+        // alignItems: "center",
         justifyContent: "center",
         gap: 3,
-        width: 64,
-      }}
+        width: "auto",
+        marginBottom: ACTIVE ? 10 : 0,
+        // backgroundColor: "#fff",
+        borderRadius: 999,
+        padding: 10,
+        marginTop: focused ? -20 : 0,
+          backgroundColor: "#FFFFFF",
+
+
+
+
+      }
+        ]
+     }
     >
       <View
         style={{
           width: 36,
           height: 36,
-          borderRadius: 12,
+          borderRadius: 9999,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: focused ? ACTIVE : "transparent",
@@ -56,9 +72,11 @@ function TabIcon({
 
       <Text
         style={{
-          fontSize: 10,
+          fontSize: 8,
           fontWeight: "600",
           color: focused ? ACTIVE : INACTIVE,
+          textTransform:"lowercase",
+          textAlign:"center"
         }}
         numberOfLines={1}
       >
@@ -81,88 +99,90 @@ export default function TabLayout() {
 
   return (
 
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarShowLabel: false,
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
 
-          // Room for both the custom icon and its label.
-          tabBarIconStyle: {
-            width: 64,
-            height: 54,
-            paddingBottom:6
-          },
+        // Room for both the custom icon and its label.
+        tabBarIconStyle: {
+          width: 64,
+          height: 54,
+          paddingBottom: 6
+        },
 
-          tabBarStyle: {
-            // Let the page extend behind the navbar.
-            position: "absolute",
+        tabBarStyle: {
+          // Let the page extend behind the navbar.
+          position: "absolute",
 
-            width: tabBarWidth,
-            left: sideGap,
-            // right: sideGap,
-            bottom: bottomGap,
+          // width: tabBarWidth,
+          // left: sideGap,
+          // right: sideGap,
+          // bottom: bottomGap,
 
-            height: 76,
-            paddingTop: 10,
-            // paddingBottom: 10,
+          height: 76,
+          paddingTop: 8,
+          // paddingBottom: 10,
 
-            backgroundColor: "#FFFFFF",
-            borderColor: "#E2E8F0",
-            borderWidth: 1,
-            borderRadius: 60,
-            margin: "auto",
-            marginLeft:sideGap
-          },
+          backgroundColor: "#FFFFFF",
+          borderColor: "#E2E8F0",
+          borderWidth: 1,
+          // borderRadius: 60,
+          margin: "auto",
+          marginBottom:0,
+          paddingBottom:20
+          // marginLeft: sideGap
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Home} focused={focused} label="Home" />
+          ),
         }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon Icon={Home} focused={focused} label="Home" />
-            ),
-          }}
-        />
+      />
 
-        <Tabs.Screen
-          name="jobs"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon Icon={Briefcase} focused={focused} label="Jobs" />
-            ),
-          }}
-        />
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Briefcase} focused={focused} label="Jobs" />
+          ),
+        }}
+      />
 
-        <Tabs.Screen
-          name="clock"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon Icon={Clock} focused={focused} label="Clock" />
-            ),
-          }}
-        />
+      <Tabs.Screen
+        name="clock"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Clock} focused={focused} label="Clock" />
+          ),
+        }}
+      />
 
-        <Tabs.Screen
-          name="schedule"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon
-                Icon={CalendarDays}
-                focused={focused}
-                label="Schedule"
-              />
-            ),
-          }}
-        />
+      <Tabs.Screen
+        name="schedule"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={CalendarDays}
+              focused={focused}
+              label="Schedule"
+            />
+          ),
+        }}
+      />
 
-        <Tabs.Screen
-          name="profile"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon Icon={User} focused={focused} label="Profile" />
-            ),
-          }}
-        />
-      </Tabs>
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={User} focused={focused} label="Profile" />
+          ),
+        }}
+      />
+    </Tabs>
   )
 }

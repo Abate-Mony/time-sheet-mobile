@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.inprn.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#1E3A5F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
