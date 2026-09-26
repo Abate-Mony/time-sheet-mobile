@@ -106,6 +106,8 @@ class ActiveJobNotificationModule : Module() {
     val percentage = (params["percentage"] as? Number)?.toInt()
     val deepLink = params["deepLink"] as? String ?: "inprn://clock"
 
+    Log.i(TAG, "show() jobId=$jobId percentage=$percentage checkedInAtMs=$checkedInAtMs subtitle=$subtitle timingLine=$timingLine")
+
     val builder = NotificationCompat.Builder(context, CHANNEL_ID)
       .setSmallIcon(context.applicationInfo.icon)
       .setContentTitle(title)
@@ -117,13 +119,14 @@ class ActiveJobNotificationModule : Module() {
       .setColor(Color.parseColor(BRAND_COLOR))
       .setPriority(NotificationCompat.PRIORITY_LOW)
 
-    when {
-      subtitle != null && timingLine != null -> {
-        builder.setContentText(timingLine)
-        builder.setStyle(NotificationCompat.BigTextStyle().bigText("$subtitle\n$timingLine"))
-      }
-      timingLine != null -> builder.setContentText(timingLine)
-      subtitle != null -> builder.setContentText(subtitle)
+    // Deliberately plain setContentText (no BigTextStyle) — Android's base
+    // notification template reliably renders setProgress()'s bar alongside
+    // plain title/text; wrapping content in a style risks the OEM's style
+    // renderer dropping the progress element, which is the one thing this
+    // notification cannot afford to lose.
+    val combinedText = listOfNotNull(subtitle, timingLine).joinToString(" · ")
+    if (combinedText.isNotEmpty()) {
+      builder.setContentText(combinedText)
     }
 
     if (checkedInAtMs != null) {
