@@ -7,6 +7,7 @@ import {
 
 import { router } from "expo-router";
 import Toast from "react-native-toast-message";
+import { stopActiveJobNotification } from "../services/activeJobNotification";
 import { clearSession, getStoredUser, getToken, saveRefreshToken, saveSession, saveUser } from "../utils/auth";
 import { setUnauthorizedHandler } from "../utils/authEvents";
 import { registerPushTokenWithServer } from "../utils/pushNotifications";
@@ -76,6 +77,13 @@ export function AuthProvider({
 
   async function logout() {
     await clearSession();
+
+    // The active-job notification manager only reconciles while
+    // authenticated (app/_layout.tsx unmounts it on logout), so it can no
+    // longer converge a stale "Job in progress" notification away on its
+    // own if the worker logs out mid-shift — clear it explicitly here
+    // instead of leaving it stuck.
+    await stopActiveJobNotification();
 
     setAccessToken(null);
     setUser(null);

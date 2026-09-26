@@ -1,13 +1,19 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/queryClient';
-import { focusManager, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import { activeWorkerJob } from './(tabs)/clock';
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import {
+  reconcileActiveJobNotification,
+  updateActiveJobNotification,
+  type ActiveJobNotificationJob,
+} from "../services/activeJobNotification";
 import { subscribeToNotificationTaps } from "../utils/pushNotifications";
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -73,6 +79,37 @@ function NotificationTapHandler() {
   return null;
 }
 
+// Keeps the Android "active job" ongoing notification (services/activeJobNotification.ts)
+// in sync with the backend — the single source of truth for whether a shift
+// is actually in-progress. Reuses the same ["active-job"] query the clock
+// tab already owns (React Query dedupes by key, so this doesn't add a
+// second network subscription — it's just another consumer of the same
+// cached result), so it reacts to every place that query already
+// gets invalidated: clock-in, clock-out, cancellation, focus, app resume.
+function ActiveJobNotificationManager() {
+  const { data } = useQuery(activeWorkerJob());
+  const job = (data && "job" in data ? data.job : null) as ActiveJobNotificationJob | null;
+  const isInProgress = job?.workerJobDetails?.workerStatus === "in-progress";
+
+  useEffect(() => {
+    reconcileActiveJobNotification(job);
+  }, [job]);
+
+  // Elapsed time itself ticks via the native chronometer (no JS timer
+  // needed for that), but the progress percentage/overtime text is computed
+  // in JS from cached data, so it needs an occasional nudge to stay
+  // current — 45s matches the "30-60s" cadence called for, and re-renders
+  // the notification from already-cached data rather than hitting the
+  // network.
+  useEffect(() => {
+    if (!isInProgress || !job) return;
+    const id = setInterval(() => updateActiveJobNotification(job), 45_000);
+    return () => clearInterval(id);
+  }, [isInProgress, job]);
+
+  return null;
+}
+
 function RootNavigator() {
   const { accessToken, loading } = useAuth();
   const colorScheme = useColorScheme();
@@ -97,6 +134,7 @@ function RootNavigator() {
       </Stack>
       <AppStateFocusManager />
       {authenticated && <NotificationTapHandler />}
+      {authenticated && Platform.OS === "android" && <ActiveJobNotificationManager />}
       {/* Every screen in this app sits on a light background (#F8FAFC/white)
           right at the top edge, so the status bar needs dark icons for
           contrast regardless of the OS theme — "auto" would pick white

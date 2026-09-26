@@ -1,0 +1,7 @@
+{
+  "name": "active-job-notification",
+  "version": "1.0.0",
+  "description": "Local Expo module: Android ongoing/progress notification for a worker's in-progress shift.",
+  "main": "index.ts",
+  "private": true
+}
