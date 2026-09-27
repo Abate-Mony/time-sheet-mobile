@@ -32,6 +32,7 @@ const SECTIONS: {
     title: 'Jobs',
     rows: [
       { event: 'job_assigned', label: 'New job assigned', description: 'When a manager assigns you a shift' },
+      { event: 'shift_time_changed', label: 'Shift time changed', description: 'When a manager changes the time on a shift you’re already on' },
     ],
   },
   {

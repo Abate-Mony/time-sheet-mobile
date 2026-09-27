@@ -117,6 +117,7 @@ export type NotificationEvent =
   | "timesheet_rejected"
   | "time_off_requested"
   | "time_off_reviewed"
+  | "shift_time_changed"
 
 export type EventNotificationPreference = {
   email: boolean
