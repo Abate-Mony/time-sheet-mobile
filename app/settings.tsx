@@ -1,23 +1,58 @@
 import { useRouter } from "expo-router"
-import { Bell, ChevronLeft } from "lucide-react-native"
-import { useEffect, useState } from "react"
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native"
+import { Bell, ChevronLeft, RefreshCw, ShieldCheck } from "lucide-react-native"
+import { useCallback, useEffect, useState } from "react"
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 import { queryClient } from "@/lib/queryClient"
+import { disableAppLock, enableAppLock, isAppLockEnabled, type AppLockAvailability } from "@/services/appLock"
 import {
   isShiftEndAlertEnabled,
   reconcileShiftEndAlert,
   setShiftEndAlertEnabled,
 } from "@/services/shiftEndAlert"
+import { getLastSyncedAt, getQueuedActions } from "@/utils/offlineClockQueue"
+import { syncOfflineClockQueue } from "@/utils/offlineClockSync"
+
+const AVAILABILITY_MESSAGE: Record<AppLockAvailability, string> = {
+  available: "",
+  no_hardware: "Your device doesn't support biometric authentication.",
+  not_enrolled: "Set up a passcode, fingerprint, or face unlock in your device settings first, then try again.",
+}
+
+function timeAgo(iso: string): string {
+  const seconds = Math.max(Math.floor((Date.now() - new Date(iso).getTime()) / 1000), 0)
+  if (seconds < 60) return "just now"
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 export default function SettingsScreen() {
   const router = useRouter()
+
   const [shiftEndAlert, setShiftEndAlert] = useState<boolean | null>(null)
+  const [appLock, setAppLock] = useState<boolean | null>(null)
+  const [appLockBusy, setAppLockBusy] = useState(false)
+
+  const [pendingCount, setPendingCount] = useState(0)
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+
+  const loadQueueInfo = useCallback(async () => {
+    const [actions, synced] = await Promise.all([getQueuedActions(), getLastSyncedAt()])
+    setPendingCount(actions.length)
+    setLastSyncedAt(synced)
+  }, [])
 
   useEffect(() => {
     isShiftEndAlertEnabled().then(setShiftEndAlert)
-  }, [])
+    isAppLockEnabled().then(setAppLock)
+    loadQueueInfo()
+  }, [loadQueueInfo])
 
   const toggleShiftEndAlert = async (value: boolean) => {
     setShiftEndAlert(value)
@@ -32,6 +67,37 @@ export default function SettingsScreen() {
     reconcileShiftEndAlert((cached?.job ?? null) as Parameters<typeof reconcileShiftEndAlert>[0])
   }
 
+  const toggleAppLock = async (value: boolean) => {
+    if (!value) {
+      setAppLock(false)
+      await disableAppLock()
+      return
+    }
+
+    setAppLockBusy(true)
+    const result = await enableAppLock()
+    setAppLockBusy(false)
+
+    if (result.success) {
+      setAppLock(true)
+      return
+    }
+
+    setAppLock(false)
+    if (result.reason === "no_hardware" || result.reason === "not_enrolled") {
+      Alert.alert("Can't turn on App Lock", AVAILABILITY_MESSAGE[result.reason])
+    }
+    // auth_failed (wrong biometric / user cancelled) — no alert needed, the
+    // system's own prompt already told them what happened.
+  }
+
+  const handleSyncNow = async () => {
+    setSyncing(true)
+    await syncOfflineClockQueue()
+    await loadQueueInfo()
+    setSyncing(false)
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.content}>
@@ -42,6 +108,32 @@ export default function SettingsScreen() {
 
         <Text style={styles.title}>Settings</Text>
 
+        {/* Sync status */}
+        <View style={styles.sectionHeader}>
+          <RefreshCw size={13} color="#94A3B8" />
+          <Text style={styles.sectionTitle}>Sync</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>
+                {pendingCount === 0 ? "All synced" : `${pendingCount} pending action${pendingCount === 1 ? "" : "s"}`}
+              </Text>
+              <Text style={styles.rowSub}>
+                {pendingCount === 0
+                  ? "Clock-ins/outs saved offline are synced automatically."
+                  : "Will sync automatically once you're back online."}
+                {lastSyncedAt ? `  •  Last synced ${timeAgo(lastSyncedAt)}` : ""}
+              </Text>
+            </View>
+            <Pressable style={styles.syncButton} onPress={handleSyncNow} disabled={syncing}>
+              {syncing ? <ActivityIndicator size="small" color="#1E3A5F" /> : <Text style={styles.syncButtonText}>Sync now</Text>}
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Alerts */}
         <View style={styles.sectionHeader}>
           <Bell size={13} color="#94A3B8" />
           <Text style={styles.sectionTitle}>Alerts</Text>
@@ -56,11 +148,31 @@ export default function SettingsScreen() {
               </Text>
             </View>
             {shiftEndAlert !== null && (
-              <Switch
-                value={shiftEndAlert}
-                onValueChange={toggleShiftEndAlert}
-                trackColor={{ true: "#1E3A5F" }}
-              />
+              <Switch value={shiftEndAlert} onValueChange={toggleShiftEndAlert} trackColor={{ true: "#1E3A5F" }} />
+            )}
+          </View>
+        </View>
+
+        {/* Security */}
+        <View style={styles.sectionHeader}>
+          <ShieldCheck size={13} color="#94A3B8" />
+          <Text style={styles.sectionTitle}>Security</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>App Lock</Text>
+              <Text style={styles.rowSub}>
+                Require Face ID, fingerprint, or your device passcode to open INPRN.
+              </Text>
+            </View>
+            {appLockBusy ? (
+              <ActivityIndicator size="small" color="#1E3A5F" />
+            ) : (
+              appLock !== null && (
+                <Switch value={appLock} onValueChange={toggleAppLock} trackColor={{ true: "#1E3A5F" }} />
+              )
             )}
           </View>
         </View>
@@ -98,4 +210,17 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   rowTitle: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
   rowSub: { fontSize: 12, color: "#94A3B8", marginTop: 3, lineHeight: 17 },
+
+  syncButton: {
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 84,
+  },
+  syncButtonText: { fontSize: 12, fontWeight: "700", color: "#1E3A5F" },
 })

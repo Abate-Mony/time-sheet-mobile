@@ -2,7 +2,7 @@ import { isAxiosError } from "axios";
 import Toast from "react-native-toast-message";
 import { queryClient } from "../lib/queryClient";
 import customFetch from "./customFetch";
-import { getQueuedActions, removeQueuedAction, type QueuedClockAction } from "./offlineClockQueue";
+import { getQueuedActions, removeQueuedAction, setLastSyncedAt, type QueuedClockAction } from "./offlineClockQueue";
 
 let isSyncing = false;
 
@@ -44,6 +44,7 @@ export async function syncOfflineClockQueue(): Promise<void> {
 
       if (result === "synced") {
         await removeQueuedAction(action.id);
+        await setLastSyncedAt(new Date().toISOString());
         syncedAny = true;
         Toast.show({
           type: "success",

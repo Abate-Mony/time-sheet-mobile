@@ -1,4 +1,5 @@
 import { File, Paths } from "expo-file-system";
+import * as SecureStore from "expo-secure-store";
 
 // Clock-in/out is the one action a worker needs to take with no signal at
 // all (basements, rural sites, warehouses) — this queues it locally instead
@@ -64,4 +65,17 @@ export async function removeQueuedAction(id: string): Promise<void> {
 
 export async function hasQueuedActions(): Promise<boolean> {
   return readQueueSync().length > 0;
+}
+
+// For the Settings sync-status card — the last time a queued action
+// actually reached the server, not just "the last time sync ran" (which
+// would be meaningless while offline).
+const LAST_SYNCED_KEY = "offlineQueueLastSyncedAt";
+
+export async function getLastSyncedAt(): Promise<string | null> {
+  return SecureStore.getItemAsync(LAST_SYNCED_KEY);
+}
+
+export async function setLastSyncedAt(iso: string): Promise<void> {
+  await SecureStore.setItemAsync(LAST_SYNCED_KEY, iso);
 }

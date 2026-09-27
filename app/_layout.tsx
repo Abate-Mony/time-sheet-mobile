@@ -2,9 +2,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/queryClient';
 import { focusManager, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
+import { Lock } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { AppState, Platform, type AppStateStatus } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View, type AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from "../context/AuthContext";
@@ -13,6 +14,7 @@ import {
   updateActiveJobNotification,
   type ActiveJobNotificationJob,
 } from "../services/activeJobNotification";
+import { authenticateToUnlock, isAppLockEnabled } from "../services/appLock";
 import { reconcileShiftEndAlert } from "../services/shiftEndAlert";
 import { syncOfflineClockQueue } from "../utils/offlineClockSync";
 import { subscribeToNotificationTaps } from "../utils/pushNotifications";
@@ -148,15 +150,134 @@ function ShiftEndAlertManager() {
   return null;
 }
 
+// Checks the app-lock preference (services/appLock.ts) before anything
+// renders, and re-locks on every return to the foreground — standard
+// "lock on backgrounding" behavior. `ready` gates RootNavigator's render
+// entirely (see below) so the Stack's real screens never paint even for a
+// frame before we know whether to show them behind the lock overlay —
+// the point of the feature would be undermined by a flash of content.
+function useAppLockGate(authenticated: boolean) {
+  const [ready, setReady] = useState(false);
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    if (!authenticated) {
+      setLocked(false);
+      setReady(true);
+      return;
+    }
+
+    let mounted = true;
+    isAppLockEnabled().then(enabled => {
+      if (!mounted) return;
+      setLocked(enabled);
+      setReady(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [authenticated]);
+
+  useEffect(() => {
+    if (!authenticated) return;
+
+    const subscription = AppState.addEventListener("change", async status => {
+      if (status !== "active") return;
+      const enabled = await isAppLockEnabled();
+      if (enabled) setLocked(true);
+    });
+    return () => subscription.remove();
+  }, [authenticated]);
+
+  return { ready, locked, setLocked };
+}
+
+function AppLockOverlay({
+  locked,
+  onUnlocked,
+}: {
+  locked: boolean;
+  onUnlocked: () => void;
+}) {
+  const [checking, setChecking] = useState(false);
+
+  const attemptUnlock = useCallback(async () => {
+    if (checking) return;
+    setChecking(true);
+    const success = await authenticateToUnlock();
+    setChecking(false);
+    if (success) onUnlocked();
+  }, [checking, onUnlocked]);
+
+  // Prompt immediately as soon as the screen appears locked, rather than
+  // making the worker tap a button first every single time.
+  useEffect(() => {
+    if (locked) attemptUnlock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
+
+  if (!locked) return null;
+
+  return (
+    <View style={lockStyles.overlay}>
+      <View style={lockStyles.iconCircle}>
+        <Lock size={26} color="#1E3A5F" />
+      </View>
+      <Text style={lockStyles.title}>INPRN Locked</Text>
+      <Text style={lockStyles.subtitle}>Unlock to see your shifts and clock in.</Text>
+      <Pressable style={lockStyles.button} onPress={attemptUnlock} disabled={checking}>
+        {checking ? <ActivityIndicator color="#FFFFFF" /> : <Text style={lockStyles.buttonText}>Unlock</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
+const lockStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 32,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E8EEF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  title: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  subtitle: { fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 16 },
+  button: {
+    height: 46,
+    minWidth: 140,
+    borderRadius: 12,
+    backgroundColor: '#1E3A5F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+});
+
 function RootNavigator() {
   const { accessToken, loading } = useAuth();
   const colorScheme = useColorScheme();
+  const authenticated = !!accessToken;
+  const lockGate = useAppLockGate(authenticated);
 
-  if (loading) {
+  if (loading || !lockGate.ready) {
     return null;
   }
-
-  const authenticated = !!accessToken;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -176,6 +297,9 @@ function RootNavigator() {
       {authenticated && <OfflineSyncManager />}
       {authenticated && Platform.OS === "android" && <ActiveJobNotificationManager />}
       {authenticated && <ShiftEndAlertManager />}
+      {authenticated && (
+        <AppLockOverlay locked={lockGate.locked} onUnlocked={() => lockGate.setLocked(false)} />
+      )}
       {/* Every screen in this app sits on a light background (#F8FAFC/white)
           right at the top edge, so the status bar needs dark icons for
           contrast regardless of the OS theme — "auto" would pick white
