@@ -5,7 +5,7 @@ import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter 
 import { Lock } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View, type AppStateStatus } from 'react-native';
+import { ActivityIndicator, AppState, Modal, Platform, Pressable, StyleSheet, Text, View, type AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from "../context/AuthContext";
@@ -216,30 +216,32 @@ function AppLockOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked]);
 
-  if (!locked) return null;
-
+  // A plain absolutely-positioned sibling View doesn't reliably sit above
+  // expo-router's <Stack> on iOS — react-native-screens renders each screen
+  // as a native UIViewController there, and zIndex only governs RN's own
+  // view flattening, not native view-controller layering (Android's stack
+  // implementation happened to still show it, which is why this only
+  // surfaced on iOS). A Modal always renders in its own native layer above
+  // everything on both platforms, which is what this actually needs.
   return (
-    <View style={lockStyles.overlay}>
-      <View style={lockStyles.iconCircle}>
-        <Lock size={26} color="#1E3A5F" />
+    <Modal visible={locked} animationType="none" statusBarTranslucent presentationStyle="fullScreen">
+      <View style={lockStyles.overlay}>
+        <View style={lockStyles.iconCircle}>
+          <Lock size={26} color="#1E3A5F" />
+        </View>
+        <Text style={lockStyles.title}>INPRN Locked</Text>
+        <Text style={lockStyles.subtitle}>Unlock to see your shifts and clock in.</Text>
+        <Pressable style={lockStyles.button} onPress={attemptUnlock} disabled={checking}>
+          {checking ? <ActivityIndicator color="#FFFFFF" /> : <Text style={lockStyles.buttonText}>Unlock</Text>}
+        </Pressable>
       </View>
-      <Text style={lockStyles.title}>INPRN Locked</Text>
-      <Text style={lockStyles.subtitle}>Unlock to see your shifts and clock in.</Text>
-      <Pressable style={lockStyles.button} onPress={attemptUnlock} disabled={checking}>
-        {checking ? <ActivityIndicator color="#FFFFFF" /> : <Text style={lockStyles.buttonText}>Unlock</Text>}
-      </Pressable>
-    </View>
+    </Modal>
   );
 }
 
 const lockStyles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
+    flex: 1,
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
