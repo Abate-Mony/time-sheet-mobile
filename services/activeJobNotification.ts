@@ -14,8 +14,8 @@ export interface ActiveJobNotificationJob {
   startTime?: string | null;
   endTime?: string | null;
   workerJobDetails: {
+    _id: string;
     status?: string;
-    assignmentId: string;
     checkedInAt?: string;
   };
 }
@@ -111,7 +111,7 @@ export async function startActiveJobNotification(job: ActiveJobNotificationJob):
 
   await showActiveJobNotification({
     jobId: job._id,
-    assignmentId: job.workerJobDetails.assignmentId,
+    assignmentId: job.workerJobDetails._id,
     title: progress.isOvertime ? "Job still in progress" : "Job in progress",
     subtitle: subtitleFor(job),
     timingLine: formatTimingLine(job, progress),

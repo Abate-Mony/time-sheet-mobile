@@ -8,6 +8,7 @@ import {
 import { router } from "expo-router";
 import Toast from "react-native-toast-message";
 import { stopActiveJobNotification } from "../services/activeJobNotification";
+import { cancelAnyPendingShiftEndAlert } from "../services/shiftEndAlert";
 import { clearSession, getStoredUser, getToken, saveRefreshToken, saveSession, saveUser } from "../utils/auth";
 import { setUnauthorizedHandler } from "../utils/authEvents";
 import { registerPushTokenWithServer } from "../utils/pushNotifications";
@@ -84,6 +85,7 @@ export function AuthProvider({
     // own if the worker logs out mid-shift — clear it explicitly here
     // instead of leaving it stuck.
     await stopActiveJobNotification();
+    await cancelAnyPendingShiftEndAlert();
 
     setAccessToken(null);
     setUser(null);

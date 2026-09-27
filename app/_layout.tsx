@@ -4,18 +4,19 @@ import { focusManager, QueryClientProvider, useQuery } from '@tanstack/react-que
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { AppState, type AppStateStatus, Platform } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
-import { activeWorkerJob } from './(tabs)/clock';
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import {
   reconcileActiveJobNotification,
   updateActiveJobNotification,
   type ActiveJobNotificationJob,
 } from "../services/activeJobNotification";
+import { reconcileShiftEndAlert } from "../services/shiftEndAlert";
 import { syncOfflineClockQueue } from "../utils/offlineClockSync";
 import { subscribeToNotificationTaps } from "../utils/pushNotifications";
+import { activeWorkerJob } from './(tabs)/clock';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
@@ -130,6 +131,23 @@ function ActiveJobNotificationManager() {
   return null;
 }
 
+// Shift End Alert (services/shiftEndAlert.ts) — cross-platform (unlike
+// ActiveJobNotificationManager above, which is Android-only since it drives
+// a custom native progress notification), so it's its own component rather
+// than folded into that one. Shares the same ["active-job"] query, so this
+// adds no extra network subscription — just another consumer of the same
+// cached result reacting to the same clock-in/out/cancellation/focus events.
+function ShiftEndAlertManager() {
+  const { data } = useQuery(activeWorkerJob());
+  const job = (data && "job" in data ? data.job : null) as ActiveJobNotificationJob | null;
+
+  useEffect(() => {
+    reconcileShiftEndAlert(job);
+  }, [job]);
+
+  return null;
+}
+
 function RootNavigator() {
   const { accessToken, loading } = useAuth();
   const colorScheme = useColorScheme();
@@ -150,12 +168,14 @@ function RootNavigator() {
         <Stack.Protected guard={authenticated}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
       <AppStateFocusManager />
       {authenticated && <NotificationTapHandler />}
       {authenticated && <OfflineSyncManager />}
       {authenticated && Platform.OS === "android" && <ActiveJobNotificationManager />}
+      {authenticated && <ShiftEndAlertManager />}
       {/* Every screen in this app sits on a light background (#F8FAFC/white)
           right at the top edge, so the status bar needs dark icons for
           contrast regardless of the OS theme — "auto" would pick white

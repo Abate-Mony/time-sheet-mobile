@@ -14,7 +14,11 @@ type NotificationsModule = typeof import("expo-notifications")
 
 let cached: NotificationsModule | null = null
 
-function getNotifications(): NotificationsModule | null {
+// Exported so other local-notification use (services/shiftEndAlert.ts) can
+// share the same lazily-required, Expo-Go-guarded module instance instead
+// of duplicating this guard and re-registering a second notification
+// handler.
+export function getNotifications(): NotificationsModule | null {
   if (isExpoGo) return null
 
   if (!cached) {
