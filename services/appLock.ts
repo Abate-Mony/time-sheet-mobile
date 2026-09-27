@@ -9,12 +9,10 @@ const PREFERENCE_KEY = "appLockEnabled";
 
 export async function isAppLockEnabled(): Promise<boolean> {
   const stored = await SecureStore.getItemAsync(PREFERENCE_KEY);
-  console.log("[AppLock] isAppLockEnabled() read:", JSON.stringify(stored));
   return stored === "1"; // unset (first run) defaults to OFF — opt-in
 }
 
 async function setAppLockEnabled(enabled: boolean): Promise<void> {
-  console.log("[AppLock] setAppLockEnabled() writing:", enabled);
   await SecureStore.setItemAsync(PREFERENCE_KEY, enabled ? "1" : "0");
 }
 
@@ -22,11 +20,9 @@ export type AppLockAvailability = "available" | "no_hardware" | "not_enrolled";
 
 export async function checkAppLockAvailability(): Promise<AppLockAvailability> {
   const hasHardware = await LocalAuthentication.hasHardwareAsync();
-  console.log("[AppLock] hasHardwareAsync():", hasHardware);
   if (!hasHardware) return "no_hardware";
 
   const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-  console.log("[AppLock] isEnrolledAsync():", isEnrolled);
   if (!isEnrolled) return "not_enrolled";
 
   return "available";
@@ -41,7 +37,6 @@ export async function enableAppLock(): Promise<
   { success: true } | { success: false; reason: AppLockAvailability | "auth_failed" }
 > {
   const availability = await checkAppLockAvailability();
-  console.log("[AppLock] enableAppLock() availability:", availability);
   if (availability !== "available") return { success: false, reason: availability };
 
   const result = await LocalAuthentication.authenticateAsync({
@@ -50,7 +45,6 @@ export async function enableAppLock(): Promise<
     // device passcode/PIN, same as any other biometric-gated app.
     disableDeviceFallback: false,
   });
-  console.log("[AppLock] enableAppLock() authenticateAsync result:", JSON.stringify(result));
 
   if (!result.success) return { success: false, reason: "auth_failed" };
 

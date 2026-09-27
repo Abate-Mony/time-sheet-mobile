@@ -169,7 +169,6 @@ function useAppLockGate(authenticated: boolean) {
 
     let mounted = true;
     isAppLockEnabled().then(enabled => {
-      console.log("[AppLock] useAppLockGate mount-check, authenticated=", authenticated, "enabled=", enabled);
       if (!mounted) return;
       setLocked(enabled);
       setReady(true);
@@ -182,11 +181,22 @@ function useAppLockGate(authenticated: boolean) {
   useEffect(() => {
     if (!authenticated) return;
 
+    // Only re-lock when actually returning from the background (home
+    // button / app switcher) — authenticateAsync's own Face ID/passcode
+    // system sheet transiently takes the app through "inactive" as it
+    // shows, which also fires an "active" transition once it dismisses.
+    // Re-locking on every "active" event (not just background -> active)
+    // meant a *successful* unlock immediately re-triggered this same
+    // listener and locked it straight back.
+    let previousState = AppState.currentState;
+
     const subscription = AppState.addEventListener("change", async status => {
-      console.log("[AppLock] AppState changed:", status);
-      if (status !== "active") return;
+      const previous = previousState;
+      previousState = status;
+
+      if (previous !== "background" || status !== "active") return;
+
       const enabled = await isAppLockEnabled();
-      console.log("[AppLock] foreground re-check, enabled=", enabled);
       if (enabled) setLocked(true);
     });
     return () => subscription.remove();
@@ -279,8 +289,6 @@ function RootNavigator() {
   const colorScheme = useColorScheme();
   const authenticated = !!accessToken;
   const lockGate = useAppLockGate(authenticated);
-
-  console.log("[AppLock] RootNavigator render: loading=", loading, "ready=", lockGate.ready, "locked=", lockGate.locked);
 
   if (loading || !lockGate.ready) {
     return null;
