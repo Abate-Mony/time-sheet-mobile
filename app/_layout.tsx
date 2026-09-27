@@ -305,6 +305,11 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          {/* Universal/App Links land in app/worker/ — see that folder's
+              comment. Learned the hard way with "settings" above: a
+              top-level route file with no explicit Stack.Screen entry here
+              is unreachable even though the file exists. */}
+          <Stack.Screen name="worker" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
       <AppStateFocusManager />

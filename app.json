@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.inprn.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": ["applinks:timeshift.inprn.com"]
     },
     "android": {
       "package": "com.inprn.app",
@@ -27,6 +28,20 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "timeshift.inprn.com",
+              "pathPrefix": "/worker"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
