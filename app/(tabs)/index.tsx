@@ -6,7 +6,7 @@ import dayjs from "dayjs"
 import isoWeek from "dayjs/plugin/isoWeek"
 import utc from "dayjs/plugin/utc"
 import { useFocusEffect, useRouter } from "expo-router"
-import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Timer, Zap } from "lucide-react-native"
+import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Settings, Timer, Zap } from "lucide-react-native"
 import { useCallback, useMemo, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -179,22 +179,45 @@ export default function DashboardScreen() {
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F172A" }}>{firstName}</Text>
             </View>
           </View>
-          <Pressable
-            onPress={() => router.push("/(tabs)/profile/notifications")}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 12,
-              backgroundColor: "#FFFFFF",
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            hitSlop={8}
-          >
-            <Bell size={16} color="#1E3A5F" />
-          </Pressable>
+          <View style={{
+            flex: 0,
+            display: "flex",
+            flexDirection: "row",
+            columnGap:6
+          }}>
+            <Pressable
+              onPress={() => router.push("/(tabs)/profile/notifications")}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                backgroundColor: "#FFFFFF",
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              hitSlop={8}
+            >
+              <Bell size={16} color="#1E3A5F" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/settings")}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                backgroundColor: "#FFFFFF",
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              hitSlop={8}
+            >
+              <Settings size={16} color="#1E3A5F" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Earnings */}

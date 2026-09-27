@@ -7,7 +7,7 @@ import {
   Home,
   User,
 } from "lucide-react-native"
-import { Text, View, useWindowDimensions } from "react-native"
+import { Platform, Text, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const ACTIVE = "#1E3A5F"
@@ -26,26 +26,26 @@ function TabIcon({
     <View
       style={
         [
-       
-        
-   {
-        // alignItems: "center",
-        justifyContent: "center",
-        gap: 3,
-        width: "auto",
-        marginBottom: ACTIVE ? 10 : 0,
-        // backgroundColor: "#fff",
-        borderRadius: 999,
-        padding: 10,
-        marginTop: focused ? -20 : 0,
-          backgroundColor: "#FFFFFF",
+
+
+          {
+            // alignItems: "center",
+            justifyContent: "center",
+            gap: 3,
+            width: "auto",
+            marginBottom: ACTIVE ? 10 : 0,
+            // backgroundColor: "#fff",
+            borderRadius: 999,
+            padding: 10,
+            marginTop: focused ? -20 : 0,
+            backgroundColor: "#FFFFFF",
 
 
 
 
-      }
+          }
         ]
-     }
+      }
     >
       <View
         style={{
@@ -67,7 +67,7 @@ function TabIcon({
             : {}),
         }}
       >
-        <Icon size={15} color={focused ? "#FFFFFF" : INACTIVE} />
+        <Icon size={17} color={focused ? "#FFFFFF" : INACTIVE} />
       </View>
 
       <Text
@@ -75,8 +75,8 @@ function TabIcon({
           fontSize: 8,
           fontWeight: "600",
           color: focused ? ACTIVE : INACTIVE,
-          textTransform:"lowercase",
-          textAlign:"center"
+          textTransform: "lowercase",
+          textAlign: "center"
         }}
         numberOfLines={1}
       >
@@ -96,7 +96,7 @@ export default function TabLayout() {
 
   // Keep the floating bar above the system gesture area.
   const bottomGap = Math.max(insets.bottom, 16)
-
+  const BOTTOM_PADDING = 100
   return (
 
     <Tabs
@@ -129,8 +129,8 @@ export default function TabLayout() {
           borderWidth: 1,
           // borderRadius: 60,
           margin: "auto",
-          marginBottom:0,
-          paddingBottom:20
+          marginBottom: 0,
+          paddingBottom: Platform.OS == "android" ? BOTTOM_PADDING-20 : BOTTOM_PADDING
           // marginLeft: sideGap
         },
       }}
