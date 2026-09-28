@@ -117,7 +117,7 @@ export async function startActiveJobNotification(job: ActiveJobNotificationJob):
     timingLine: formatTimingLine(job, progress),
     checkedInAtMs: checkedInAt ? dayjs(checkedInAt).valueOf() : undefined,
     percentage: progress.percentage,
-    deepLink: "inprn://clock",
+    deepLink: "onclockly://clock",
   });
 }
 

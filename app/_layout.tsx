@@ -242,7 +242,7 @@ function AppLockOverlay({
         <View style={lockStyles.iconCircle}>
           <Lock size={26} color="#1E3A5F" />
         </View>
-        <Text style={lockStyles.title}>INPRN Locked</Text>
+        <Text style={lockStyles.title}>OnClockly Locked</Text>
         <Text style={lockStyles.subtitle}>Unlock to see your shifts and clock in.</Text>
         <Pressable style={lockStyles.button} onPress={attemptUnlock} disabled={checking}>
           {checking ? <ActivityIndicator color="#FFFFFF" /> : <Text style={lockStyles.buttonText}>Unlock</Text>}

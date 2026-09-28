@@ -91,7 +91,7 @@ export default function Login() {
               resizeMode="cover"
             />
             <Text style={{ fontSize: 18, fontWeight: "600", color: "#0F172A" }}>
-              IN<Text style={{ color: "#3B82F6" }}>PRN</Text>
+              ON<Text style={{ color: "#3B82F6" }}>CLOCKLY</Text>
             </Text>
           </View>
 
@@ -238,7 +238,7 @@ export default function Login() {
               Forgot password?
             </Text>
           </Pressable> */}
-          <ExternalLink url="https://timeshift.inprn.com/auth/forgot-password">
+          <ExternalLink url="https://app.onclockly.com/auth/forgot-password">
             Forget password?
           </ExternalLink>
 

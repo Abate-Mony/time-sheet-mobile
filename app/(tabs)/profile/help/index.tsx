@@ -94,7 +94,7 @@ export default function HelpCentreScreen() {
         {!activeCategory && (
           <View>
             <Text style={styles.title}>Help Centre</Text>
-            <Text style={styles.subtitle}>Guides and answers to help you get the most out of INPRN</Text>
+            <Text style={styles.subtitle}>Guides and answers to help you get the most out of OnClockly</Text>
           </View>
         )}
 

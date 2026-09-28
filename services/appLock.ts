@@ -59,7 +59,7 @@ export async function disableAppLock(): Promise<void> {
 export async function authenticateToUnlock(): Promise<boolean> {
   try {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Unlock INPRN",
+      promptMessage: "Unlock OnClockly",
       disableDeviceFallback: false,
     });
     return result.success;

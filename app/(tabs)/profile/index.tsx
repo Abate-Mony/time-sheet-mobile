@@ -130,7 +130,7 @@ export default function ProfileScreen() {
   const handleRequestDeletion = () => {
     Alert.alert(
       "Request Account Deletion",
-      "This sends a request to your company admin to have your INPRN account deleted. This can't be undone once they action it.",
+      "This sends a request to your company admin to have your OnClockly account deleted. This can't be undone once they action it.",
       [
         {
           text: "Cancel",

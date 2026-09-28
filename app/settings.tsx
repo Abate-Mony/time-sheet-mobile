@@ -164,7 +164,7 @@ export default function SettingsScreen() {
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>App Lock</Text>
               <Text style={styles.rowSub}>
-                Require Face ID, fingerprint, or your device passcode to open INPRN.
+                Require Face ID, fingerprint, or your device passcode to open OnClockly.
               </Text>
             </View>
             {appLockBusy ? (

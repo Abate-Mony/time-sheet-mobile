@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "INPRN",
+    "name": "OnClockly",
     "slug": "inprn",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "inprn",
+    "scheme": "onclockly",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.inprn.app",
+      "bundleIdentifier": "com.onclockly.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:timeshift.inprn.com"]
+      "associatedDomains": ["applinks:app.onclockly.com"]
     },
     "android": {
-      "package": "com.inprn.app",
+      "package": "com.onclockly.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#1E3A5F",
@@ -36,7 +36,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "timeshift.inprn.com",
+              "host": "app.onclockly.com",
               "pathPrefix": "/worker"
             }
           ],
@@ -66,7 +66,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow INPRN to use your location to confirm you're on site when you clock in or out."
+          "locationWhenInUsePermission": "Allow OnClockly to use your location to confirm you're on site when you clock in or out."
         }
       ],
       "expo-font",
@@ -79,7 +79,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow INPRN to access your photos to set a profile picture."
+          "photosPermission": "Allow OnClockly to access your photos to set a profile picture."
         }
       ],
       "./plugins/withGradleHeap.js",
@@ -87,7 +87,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow INPRN to use Face ID to unlock the app."
+          "faceIDPermission": "Allow OnClockly to use Face ID to unlock the app."
         }
       ]
     ],

@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router"
 import { useEffect } from "react"
 
-// The bare https://timeshift.inprn.com/worker (no further path) case —
+// The bare https://app.onclockly.com/worker (no further path) case —
 // [...path].tsx's catch-all requires at least one segment, so this covers
 // the exact-root case separately rather than relying on optional-catch-all
 // syntax.
