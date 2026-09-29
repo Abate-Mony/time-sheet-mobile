@@ -13,7 +13,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:app.onclockly.com"]
+      "associatedDomains": [
+        "applinks:app.onclockly.com"
+      ]
     },
     "android": {
       "package": "com.onclockly.app",
@@ -27,7 +29,10 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "intentFilters": [
         {
@@ -40,7 +45,10 @@
               "pathPrefix": "/worker"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -98,7 +106,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c9a41a79-79d9-49fc-b148-e416861b3df4"
+        "projectId": "525785cf-e72d-4c99-b86c-a0d2dd21f404"
       }
     },
     "owner": "abatemony"
