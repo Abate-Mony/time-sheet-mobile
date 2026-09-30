@@ -45,6 +45,7 @@ async function getExpoPushToken(): Promise<string | null> {
     await Notifications.setNotificationChannelAsync("default", {
       name: "Default",
       importance: Notifications.AndroidImportance.MAX,
+      sound: "default",
     })
   }
 
