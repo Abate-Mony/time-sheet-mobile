@@ -470,3 +470,21 @@ export interface EarningsResponse {
   upcoming: EarningsTotals
   shifts: EarningsShift[]
 }
+
+// ── Weekly availability (GET/PUT /availability/me) ───────────────────────────
+
+export type AvailabilityDayStatus = "available" | "unavailable" | "hours"
+
+export interface AvailabilityDay {
+  day: number             // ISO weekday: 1 = Monday … 7 = Sunday
+  status: AvailabilityDayStatus
+  start: string | null    // "HH:mm", only for "hours"
+  end: string | null
+}
+
+export interface MyAvailability {
+  days: AvailabilityDay[]
+  note: string
+  isSet: boolean
+  updatedAt: string | null
+}

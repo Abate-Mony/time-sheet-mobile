@@ -6,8 +6,10 @@ import customFetch from "./customFetch";
 import { getCurrentPosition } from "./getPosition";
 import { enqueueClockAction } from "./offlineClockQueue";
 import type {
+  AvailabilityDay,
   CompanyPlanInfo,
   EditProfileForm,
+  MyAvailability,
   NotificationPreferences,
   OpenShiftClaim,
   SingleJobResponse,
@@ -284,6 +286,23 @@ export const requestTimeOff = async (params: {
 export const getMyTimeOffRequests = async (): Promise<TimeOffRequest[]> => {
   const { data } = await customFetch.get<{ requests: TimeOffRequest[] }>("/time-off/me");
   return data.requests;
+};
+
+export const getMyAvailability = async (): Promise<MyAvailability> => {
+  const { data } = await customFetch.get<{ availability: MyAvailability }>("/availability/me");
+  return data.availability;
+};
+
+export const updateMyAvailability = async (days: AvailabilityDay[], note: string): Promise<boolean> => {
+  try {
+    await customFetch.put("/availability/me", { days, note });
+    showSuccess("Availability saved");
+    await queryClient.invalidateQueries({ queryKey: ["availability", "me"] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
 };
 
 export const cancelTimeOffRequest = async (id: string): Promise<boolean> => {
