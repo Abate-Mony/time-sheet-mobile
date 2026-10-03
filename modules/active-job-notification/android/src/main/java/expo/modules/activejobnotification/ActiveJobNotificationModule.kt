@@ -81,7 +81,7 @@ class ActiveJobNotificationModule : Module() {
       "Active jobs",
       NotificationManager.IMPORTANCE_LOW
     ).apply {
-      description = "Shows your current INPRN job while you are clocked in."
+      description = "Shows your current OnClockly job while you are clocked in."
       setShowBadge(false)
       enableVibration(false)
       setSound(null, null)
@@ -104,7 +104,7 @@ class ActiveJobNotificationModule : Module() {
     val timingLine = params["timingLine"] as? String
     val checkedInAtMs = (params["checkedInAtMs"] as? Number)?.toLong()
     val percentage = (params["percentage"] as? Number)?.toInt()
-    val deepLink = params["deepLink"] as? String ?: "inprn://clock"
+    val deepLink = params["deepLink"] as? String ?: "onclockly://clock"
 
     Log.i(TAG, "show() jobId=$jobId percentage=$percentage checkedInAtMs=$checkedInAtMs subtitle=$subtitle timingLine=$timingLine")
 
@@ -144,7 +144,7 @@ class ActiveJobNotificationModule : Module() {
     // Lock-screen-safe redacted version: no client/site names.
     val publicVersion = NotificationCompat.Builder(context, CHANNEL_ID)
       .setSmallIcon(context.applicationInfo.icon)
-      .setContentTitle("INPRN")
+      .setContentTitle("OnClockly")
       .setContentText("Job in progress")
       .setOngoing(true)
       .setOnlyAlertOnce(true)

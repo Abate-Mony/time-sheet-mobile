@@ -19,7 +19,7 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.inprn.com/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://api.onclockly.com/api/v1"
       }
     },
     "production": {
