@@ -224,7 +224,14 @@ export default function JobCard(job: WorkerJob) {
                     <View style={styles.divider} />
                 )}
 
-                {job.status === "pending" && (
+                {job.status === "pending" && job.workerJobDetails?.pendingApproval && (
+                    <View style={styles.waitRow}>
+                        <Timer size={14} color="#94A3B8" />
+                        <Text style={styles.waitText}>Awaiting manager approval</Text>
+                    </View>
+                )}
+
+                {job.status === "pending" && !job.workerJobDetails?.pendingApproval && (
                     <View style={styles.actionRow}>
                         <Pressable
                             style={[styles.declineButton, isActing && styles.disabled]}

@@ -11,6 +11,7 @@ export default function JobsStackLayout() {
       <Stack.Screen name="time-off" />
       <Stack.Screen name="contactmanager" />
       <Stack.Screen name="help" />
+      <Stack.Screen name="earnings" />
     </Stack>
   )
 }

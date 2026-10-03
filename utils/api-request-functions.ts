@@ -9,6 +9,7 @@ import type {
   CompanyPlanInfo,
   EditProfileForm,
   NotificationPreferences,
+  OpenShiftClaim,
   SingleJobResponse,
   TimeOffRequest,
   TimeOffType,
@@ -324,6 +325,71 @@ export const claimOpenShift = async (jobId: string): Promise<boolean> => {
 
     await queryClient.invalidateQueries({ queryKey: ["jobs"] });
     await queryClient.invalidateQueries({ queryKey: ["open-shifts"] });
+    await queryClient.invalidateQueries({ queryKey: ["my-claims"] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const takeShiftGiveaway = async (assignmentId: string): Promise<boolean> => {
+  try {
+    const { data } = await customFetch.post(`/workers/giveaways/${assignmentId}/take`);
+
+    showSuccess(
+      data?.needsApproval
+        ? "Request sent — your manager needs to approve it"
+        : "Shift picked up successfully"
+    );
+
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    await queryClient.invalidateQueries({ queryKey: ["open-shifts"] });
+    await queryClient.invalidateQueries({ queryKey: ["my-claims"] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+// Offering keeps the worker on the shift until someone takes it — unlike
+// changeWorkerJobStaus's release, which drops them off immediately.
+export const offerShiftGiveaway = async (jobId: string, assignmentId: string, note?: string): Promise<boolean> => {
+  try {
+    await customFetch.patch(`/workers/assignments/${assignmentId}/giveaway`, note ? { note } : {});
+    showSuccess("Shift offered to other workers");
+    await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const cancelShiftGiveaway = async (jobId: string, assignmentId: string): Promise<boolean> => {
+  try {
+    await customFetch.delete(`/workers/assignments/${assignmentId}/giveaway`);
+    showSuccess("Offer taken back");
+    await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+export const getMyClaims = async (): Promise<OpenShiftClaim[]> => {
+  const { data } = await customFetch.get<{ claims: OpenShiftClaim[] }>("/workers/claims");
+  return data.claims;
+};
+
+export const withdrawOpenShiftClaim = async (assignmentId: string): Promise<boolean> => {
+  try {
+    await customFetch.patch(`/workers/assignments/${assignmentId}/withdraw-claim`);
+    showSuccess("Claim withdrawn");
+    await queryClient.invalidateQueries({ queryKey: ["my-claims"] });
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
     return true;
   } catch (err) {
     showError(getApiErrorMessage(err));

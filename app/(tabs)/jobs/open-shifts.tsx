@@ -1,32 +1,23 @@
-import { claimOpenShift } from '@/utils/api-request-functions'
-import customFetch from '@/utils/customFetch'
+import { useOpenShifts } from '@/hooks/useOpenShifts'
+import { claimOpenShift, takeShiftGiveaway } from '@/utils/api-request-functions'
 import { formatDate } from '@/utils/date'
 import type { Job } from '@/utils/types'
-import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { AlertCircle, Calendar, CalendarClock, Clock as ClockIcon, MapPin } from 'lucide-react-native'
+import { AlertCircle, Calendar, CalendarClock, ChevronRight, Clock as ClockIcon, MapPin } from 'lucide-react-native'
 import { useState } from 'react'
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-
-function useOpenShifts() {
-  return useQuery({
-    queryKey: ['open-shifts'],
-    queryFn: async () => {
-      const { data } = await customFetch.get<{ jobs: Job[] }>('/workers/open-shifts')
-      return data.jobs
-    },
-  })
-}
 
 export default function OpenShiftsScreen() {
   const router = useRouter()
   const [claimingId, setClaimingId] = useState<string | null>(null)
   const { data: shifts, isLoading, isError, refetch, isRefetching } = useOpenShifts()
 
-  const claim = async (jobId: string) => {
-    setClaimingId(jobId)
-    const ok = await claimOpenShift(jobId)
+  const claim = async (shift: Job) => {
+    setClaimingId(shift._id)
+    const ok = shift.giveaway
+      ? await takeShiftGiveaway(shift.giveaway.assignmentId)
+      : await claimOpenShift(shift._id)
     setClaimingId(null)
     if (ok) refetch()
   }
@@ -37,8 +28,16 @@ export default function OpenShiftsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Text style={styles.backText}>Back</Text>
         </Pressable>
-        <Text style={styles.title}>Open Shifts</Text>
-        <Text style={styles.subtitle}>Unassigned shifts you can pick up</Text>
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.title}>Open Shifts</Text>
+            <Text style={styles.subtitle}>Unassigned shifts you can pick up</Text>
+          </View>
+          <Pressable style={styles.claimsLink} onPress={() => router.push('/(tabs)/jobs/my-claims')}>
+            <Text style={styles.claimsLinkText}>My claims</Text>
+            <ChevronRight size={14} color="#1E3A5F" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -63,7 +62,10 @@ export default function OpenShiftsScreen() {
           </View>
         ) : (
           shifts.map(shift => (
-            <View key={shift._id} style={styles.card}>
+            <Pressable key={shift._id} style={styles.card} onPress={() => router.push({
+              pathname: '/(tabs)/jobs/open-shifts-details',
+              params: { id: shift._id }
+            })}>
               <View style={styles.cardHeader}>
                 {!!shift.client?.name && <Text style={styles.clientName}>{shift.client.name.toUpperCase()}</Text>}
                 <Text style={styles.jobTitle} numberOfLines={1}>
@@ -90,18 +92,24 @@ export default function OpenShiftsScreen() {
 
               {!!shift.payRate && <Text style={styles.payRate}>£{shift.payRate}/hr</Text>}
 
+              {!!shift.giveaway && (
+                <View style={styles.giveawayTag}>
+                  <Text style={styles.giveawayTagText}>Offered by {shift.giveaway.offeredBy}</Text>
+                </View>
+              )}
+
               <Pressable
                 style={[styles.claimButton, claimingId === shift._id && styles.disabled]}
                 disabled={claimingId === shift._id}
-                onPress={() => claim(shift._id)}
+                onPress={() => claim(shift)}
               >
                 {claimingId === shift._id ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.claimButtonText}>Claim Shift</Text>
+                  <Text style={styles.claimButtonText}>{shift.giveaway ? 'Take Shift' : 'Claim Shift'}</Text>
                 )}
               </Pressable>
-            </View>
+            </Pressable>
           ))
         )}
       </ScrollView>
@@ -127,6 +135,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64748B',
     marginBottom: 6,
+  },
+
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  claimsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+
+  claimsLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1E3A5F',
   },
 
   title: {
@@ -210,6 +241,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#1E3A5F',
+  },
+
+  giveawayTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 2,
+  },
+
+  giveawayTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6D28D9',
   },
 
   claimButton: {

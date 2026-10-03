@@ -240,6 +240,16 @@ export interface Job {
   attachment?: JobAttachment | null
   siteSnapshot?: JobSiteSnapshot | null
   checklist?: ChecklistItem[]
+  // Only on GET /workers/open-shifts entries that are another worker's
+  // offered shift rather than a free slot — taken via takeShiftGiveaway.
+  giveaway?: OpenShiftGiveaway
+}
+
+export interface OpenShiftGiveaway {
+  assignmentId: string
+  offeredBy: string
+  note?: string
+  offeredAt: string
 }
 
 // Optional on-site task list, shared across every worker assigned to the
@@ -280,6 +290,12 @@ export interface JobAssignment {
   overtimeHours: number
   payRate: number
   totalPay: number
+  pendingApproval?: boolean
+  // Open giveaway — set on the giver's assignment while their offer is live;
+  // giveawayTakenBy is a taker's claim still waiting on a manager.
+  giveawayOfferedAt?: string | null
+  giveawayNote?: string
+  giveawayTakenBy?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -296,6 +312,9 @@ export interface WorkerJobDetails {
   checkedOutAt?: string
   completedAt?: string
   hoursWorked: number
+  // Self-claimed open shift still awaiting a manager — status is "pending"
+  // but the worker has nothing to accept or decline.
+  pendingApproval?: boolean
 }
 
 export interface WorkerJob extends Omit<Job, "status"> {
@@ -387,3 +406,67 @@ export interface WorkerRecurringGroup {
 }
 
 export type DialogState = "confirm" | "loading" | "success" | "partial" | "error" | "empty"
+// ── Open-shift claims ────────────────────────────────────────────────────────
+
+// Derived server-side in GET /workers/claims — see getMyClaims.
+export type ClaimStatus = "pending" | "approved" | "declined" | "withdrawn" | "cancelled"
+
+export interface OpenShiftClaim {
+  _id: string           // the assignment id
+  job: Job
+  status: AssignmentStatus
+  claimStatus: ClaimStatus
+  isGiveaway: boolean   // taken from another worker's offer, not a free slot
+  claimedAt: string
+  acceptedAt?: string
+  declinedAt?: string
+  cancelledAt?: string
+  cancellationReason?: string
+}
+
+// ── In-app notification inbox ────────────────────────────────────────────────
+
+export interface InboxNotification {
+  _id: string
+  type: string
+  title: string
+  body: string
+  link: string | null   // web-style path, e.g. "/worker/jobs/<id>"
+  isRead: boolean
+  createdAt: string
+}
+
+export interface NotificationsPage {
+  notifications: InboxNotification[]
+  page: number
+  totalPages: number
+  total: number
+  unreadCount: number
+}
+
+// ── Earnings (GET /workers/me/earnings) ──────────────────────────────────────
+
+export type EarningsPeriod = "week" | "month"
+
+export interface EarningsTotals {
+  amount: number
+  minutes: number
+  shifts: number
+}
+
+export interface EarningsShift {
+  assignmentId: string
+  job: Pick<Job, "_id" | "title" | "date" | "startTime" | "endTime" | "minutes" | "location">
+  kind: "earned" | "upcoming"   // completed vs. accepted/in-progress (estimate)
+  minutes: number
+  payRate: number
+  amount: number
+  overtimePendingMinutes: number
+}
+
+export interface EarningsResponse {
+  period: { type: EarningsPeriod; offset: number; start: string; end: string }
+  earned: EarningsTotals
+  upcoming: EarningsTotals
+  shifts: EarningsShift[]
+}

@@ -320,8 +320,9 @@ export default function ProfileScreen() {
         </View>
 
         {/* Earnings */}
-        <View
+        <Pressable
           style={styles.earningsCard}
+          onPress={() => router.push("/(tabs)/profile/earnings")}
         >
           <View
             style={
@@ -417,7 +418,7 @@ export default function ProfileScreen() {
                 }
               >
                 {monthly.averagePayRate ||
-                  2}
+                  0}
               </Text>
 
               <Text
@@ -429,7 +430,7 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </Pressable>
 
         {/* Horizontal stats */}
         <ScrollView

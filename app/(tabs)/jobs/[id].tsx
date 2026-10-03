@@ -1,6 +1,12 @@
 import { useShiftStartGate } from "@/hooks/shiftgate";
 import { useCompanyPlan } from "@/hooks/useCompanyPlan";
-import { changeWorkerJobStaus, toggleChecklistItem } from "@/utils/api-request-functions";
+import {
+  cancelShiftGiveaway,
+  changeWorkerJobStaus,
+  offerShiftGiveaway,
+  toggleChecklistItem,
+  withdrawOpenShiftClaim,
+} from "@/utils/api-request-functions";
 import customFetch from "@/utils/customFetch";
 import { formatDate, formatDuration, formatTimeUntil } from "@/utils/date";
 import { buildMapUrl, MAP_SERVICES, type MapService } from "@/utils/mapLinks";
@@ -29,6 +35,7 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Modal,
   Platform,
@@ -145,6 +152,11 @@ export default function JobDetailScreen() {
   const [releaseReason, setReleaseReason] = useState("");
   const [isReleasing, setIsReleasing] = useState(false);
 
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerNote, setOfferNote] = useState("");
+  const [isOffering, setIsOffering] = useState(false);
+  const [isWithdrawingOffer, setIsWithdrawingOffer] = useState(false);
+
   const { hasFeature } = useCompanyPlan();
   const canRelease = hasFeature("openShifts");
 
@@ -225,6 +237,46 @@ export default function JobDetailScreen() {
       setShowReleaseModal(false);
       await refetch();
     }
+  };
+
+  const assignment = job?.workerJobDetails;
+  const isOffered = !!assignment?.giveawayOfferedAt;
+
+  const confirmOffer = async () => {
+    if (!id || !assignment) return;
+    setIsOffering(true);
+    const ok = await offerShiftGiveaway(id, assignment._id, offerNote.trim() || undefined);
+    setIsOffering(false);
+    if (ok) {
+      setOfferNote("");
+      setShowOfferModal(false);
+    }
+  };
+
+  const withdrawOffer = async () => {
+    if (!id || !assignment) return;
+    setIsWithdrawingOffer(true);
+    await cancelShiftGiveaway(id, assignment._id);
+    setIsWithdrawingOffer(false);
+  };
+
+  const [isWithdrawingClaim, setIsWithdrawingClaim] = useState(false);
+
+  const confirmWithdrawClaim = () => {
+    if (!assignment) return;
+    Alert.alert("Withdraw claim?", "You won't be able to claim this shift again.", [
+      { text: "Keep claim", style: "cancel" },
+      {
+        text: "Withdraw",
+        style: "destructive",
+        onPress: async () => {
+          setIsWithdrawingClaim(true);
+          const ok = await withdrawOpenShiftClaim(assignment._id);
+          setIsWithdrawingClaim(false);
+          if (ok) await refetch();
+        },
+      },
+    ]);
   };
 
   const heroColor = useMemo(() => {
@@ -481,7 +533,29 @@ export default function JobDetailScreen() {
             </View>
           )}
 
-          {job.status === "pending" && (
+          {job.status === "pending" && assignment?.pendingApproval && (
+            <View style={styles.approvalCard}>
+              <View style={styles.flex1}>
+                <Text style={styles.approvalTitle}>Awaiting manager approval</Text>
+                <Text style={styles.approvalBody}>
+                  You claimed this shift. Your manager will approve or decline it, and you&apos;ll be notified either way.
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.approvalWithdrawButton, isWithdrawingClaim && styles.disabled]}
+                disabled={isWithdrawingClaim}
+                onPress={confirmWithdrawClaim}
+              >
+                {isWithdrawingClaim ? (
+                  <ActivityIndicator size="small" color="#92400E" />
+                ) : (
+                  <Text style={styles.approvalWithdrawText}>Withdraw</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+
+          {job.status === "pending" && !assignment?.pendingApproval && (
             <View style={styles.actionRow}>
               <Pressable
                 disabled={loadingAction !== null}
@@ -546,6 +620,40 @@ export default function JobDetailScreen() {
                 </Text>
               </View>
             )
+          )}
+
+          {job.status === "accepted" && isOffered && (
+            <View style={styles.offerCard}>
+              <View style={styles.flex1}>
+                <Text style={styles.offerTitle}>
+                  {assignment?.giveawayTakenBy ? "Someone wants this shift" : "Offered to other workers"}
+                </Text>
+                <Text style={styles.offerBody}>
+                  {assignment?.giveawayTakenBy
+                    ? "A colleague has asked to take it. It stays yours until your manager approves the handover."
+                    : "It's still yours until someone takes it. Keep planning to work it until then."}
+                </Text>
+              </View>
+              {!assignment?.giveawayTakenBy && (
+                <Pressable
+                  style={[styles.offerWithdrawButton, isWithdrawingOffer && styles.disabled]}
+                  disabled={isWithdrawingOffer}
+                  onPress={withdrawOffer}
+                >
+                  {isWithdrawingOffer ? (
+                    <ActivityIndicator size="small" color="#6D28D9" />
+                  ) : (
+                    <Text style={styles.offerWithdrawText}>Take back</Text>
+                  )}
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {job.status === "accepted" && !hasExpired && canRelease && !isOffered && (
+            <Pressable style={styles.offerButton} onPress={() => setShowOfferModal(true)}>
+              <Text style={styles.offerButtonText}>Offer to Others</Text>
+            </Pressable>
           )}
 
           {job.status === "accepted" && !hasExpired && canRelease && (
@@ -632,6 +740,26 @@ export default function JobDetailScreen() {
             loading={isReleasing}
             onCancel={() => setShowReleaseModal(false)}
             onConfirm={confirmRelease}
+          />
+
+          <ReasonSheet
+            visible={showOfferModal}
+            title="Offer shift to others"
+            description="Put this shift up for any other worker to take. Unlike releasing it, you stay on the shift until someone actually picks it up."
+            noteBox={{
+              icon: <RefreshCw size={16} color="#6D28D9" style={{ marginTop: 1 }} />,
+              text: "Other workers will see it in Open Shifts. If your manager approves shift claims, the handover happens once they approve it.",
+              bg: "#F5F3FF",
+              border: "#DDD6FE",
+              color: "#5B21B6",
+            }}
+            reason={offerNote}
+            onReasonChange={setOfferNote}
+            confirmLabel="Offer shift"
+            confirmColor="#6D28D9"
+            loading={isOffering}
+            onCancel={() => setShowOfferModal(false)}
+            onConfirm={confirmOffer}
           />
         </>
       )}
@@ -732,6 +860,18 @@ const styles = StyleSheet.create({
   waitTextExpired: { color: "#B91C1C" },
   liveButton: { height: 46, borderRadius: 12, backgroundColor: "#1E3A5F", alignItems: "center", justifyContent: "center", flexDirection: "row" },
   liveButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800", marginLeft: -7 },
+  approvalCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB" },
+  approvalTitle: { color: "#92400E", fontSize: 14, fontWeight: "700" },
+  approvalBody: { color: "#A16207", fontSize: 12, marginTop: 2, lineHeight: 17 },
+  approvalWithdrawButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#FDE68A", minWidth: 84, alignItems: "center" },
+  approvalWithdrawText: { color: "#92400E", fontSize: 13, fontWeight: "700" },
+  offerButton: { height: 42, borderRadius: 12, borderWidth: 1, borderColor: "#DDD6FE", backgroundColor: "#F5F3FF", alignItems: "center", justifyContent: "center" },
+  offerButtonText: { color: "#6D28D9", fontSize: 14, fontWeight: "700" },
+  offerCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "#DDD6FE", backgroundColor: "#F5F3FF" },
+  offerTitle: { color: "#5B21B6", fontSize: 14, fontWeight: "700" },
+  offerBody: { color: "#6D28D9", fontSize: 12, marginTop: 2, lineHeight: 17 },
+  offerWithdrawButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DDD6FE", minWidth: 84, alignItems: "center" },
+  offerWithdrawText: { color: "#6D28D9", fontSize: 13, fontWeight: "700" },
   releaseButton: { height: 42, borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", alignItems: "center", justifyContent: "center" },
   releaseButtonText: { color: "#1D4ED8", fontSize: 14, fontWeight: "700" },
   cancelShiftButton: { height: 42, borderRadius: 12, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center" },

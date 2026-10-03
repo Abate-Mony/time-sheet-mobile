@@ -88,6 +88,9 @@ function NotificationTapHandler() {
 
   useEffect(() => {
     return subscribeToNotificationTaps(data => {
+      // Whatever this push was about likely also landed in the inbox.
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
       const url = data?.url as string | undefined;
       const jobId = url?.match(/\/worker\/jobs\/([^/?#]+)/)?.[1];
 
@@ -305,6 +308,7 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="inbox" options={{ headerShown: false }} />
           {/* Universal/App Links land in app/worker/ — see that folder's
               comment. Learned the hard way with "settings" above: a
               top-level route file with no explicit Stack.Screen entry here

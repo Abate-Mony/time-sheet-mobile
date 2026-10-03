@@ -1,5 +1,6 @@
 import { workerDashboardstats } from "@/app/(tabs)/profile"
 import { useAuth } from "@/context/AuthContext"
+import { useUnreadNotificationCount } from "@/hooks/useNotifications"
 import { useTabBarClearance } from "@/hooks/useTabBarClearance"
 import { useQuery } from "@tanstack/react-query"
 import dayjs from "dayjs"
@@ -75,11 +76,14 @@ export default function DashboardScreen() {
   // never fire again on switching back, leaving Home showing whatever was
   // fetched the first time the app opened (e.g. stale after clocking in/out
   // elsewhere).
+  const { data: unreadCount = 0, refetch: refetchUnread } = useUnreadNotificationCount()
+
   useFocusEffect(
     useCallback(() => {
       load()
       refetchStats()
-    }, [load, refetchStats])
+      refetchUnread()
+    }, [load, refetchStats, refetchUnread])
   )
 
   const onRefresh = () => {
@@ -186,7 +190,7 @@ export default function DashboardScreen() {
             columnGap:6
           }}>
             <Pressable
-              onPress={() => router.push("/(tabs)/profile/notifications")}
+              onPress={() => router.push("/inbox")}
               style={{
                 width: 36,
                 height: 36,
@@ -200,6 +204,28 @@ export default function DashboardScreen() {
               hitSlop={8}
             >
               <Bell size={16} color="#1E3A5F" />
+              {unreadCount > 0 && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -5,
+                    right: -5,
+                    minWidth: 18,
+                    height: 18,
+                    paddingHorizontal: 4,
+                    borderRadius: 9,
+                    backgroundColor: "#DC2626",
+                    borderWidth: 2,
+                    borderColor: "#F5F5F5",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: "#FFFFFF", fontSize: 9, fontWeight: "700" }}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Text>
+                </View>
+              )}
             </Pressable>
             <Pressable
               onPress={() => router.push("/settings")}
@@ -222,7 +248,10 @@ export default function DashboardScreen() {
 
         {/* Earnings */}
         {monthly ? (
-          <View style={{ backgroundColor: "#1E3A5F", borderRadius: 18, padding: 20, overflow: "hidden" }}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/profile/earnings")}
+            style={{ backgroundColor: "#1E3A5F", borderRadius: 18, padding: 20, overflow: "hidden" }}
+          >
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <View>
                 <Text style={{ fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.55)", letterSpacing: 0.7 }}>
@@ -267,7 +296,7 @@ export default function DashboardScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </Pressable>
         ) : null}
 
         {/* Active job banner */}

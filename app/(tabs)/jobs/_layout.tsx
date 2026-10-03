@@ -7,6 +7,8 @@ export default function JobsStackLayout() {
       <Stack.Screen name="[id]" />
       <Stack.Screen name="open-shifts" />
       <Stack.Screen name="recurring" />
+      <Stack.Screen name="open-shifts-details" />
+      <Stack.Screen name="my-claims" />
     </Stack>
   )
 }
