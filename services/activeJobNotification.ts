@@ -1,4 +1,7 @@
+import Constants from "expo-constants";
 import dayjs, { type Dayjs } from "dayjs";
+import { Platform } from "react-native";
+import type { ActiveJobActivityProps } from "../components/live-activity/ActiveJobActivity";
 import { cancelActiveJobNotification, showActiveJobNotification } from "../modules/active-job-notification";
 
 // Narrow structural shape — deliberately not imported from
@@ -102,10 +105,93 @@ function subtitleFor(job: ActiveJobNotificationJob): string {
   return client || location || job.title;
 }
 
+// ── iOS: Live Activity ───────────────────────────────────────────────────────
+// Same job state as the Android notification, rendered by
+// components/live-activity/ActiveJobActivity.tsx. Required lazily so Android
+// and Expo Go (no expo-widgets native module) never load it.
+
+type ActiveJobActivityFactory = typeof import("../components/live-activity/ActiveJobActivity").default;
+
+let liveActivityFactory: ActiveJobActivityFactory | null | undefined;
+function getLiveActivityFactory(): ActiveJobActivityFactory | null {
+  if (liveActivityFactory !== undefined) return liveActivityFactory;
+  liveActivityFactory = null;
+  if (Platform.OS !== "ios" || Constants.appOwnership === "expo") return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    liveActivityFactory = require("../components/live-activity/ActiveJobActivity").default;
+  } catch (err) {
+    console.warn("Live Activity unavailable:", err);
+  }
+  return liveActivityFactory ?? null;
+}
+
+function liveActivityPropsFor(job: ActiveJobNotificationJob): ActiveJobActivityProps {
+  const checkedInAt = job.workerJobDetails.checkedInAt;
+  const checkedInAtMs = checkedInAt ? dayjs(checkedInAt).valueOf() : Date.now();
+  const progress = computeJobProgress({ ...job, checkedInAt });
+  const window = resolveScheduledWindow(job);
+  const durationMs = window ? window.end.diff(window.start) : 0;
+
+  return {
+    title: job.title,
+    subtitle: subtitleFor(job),
+    checkedInAtMs,
+    progressEndAtMs: durationMs > 0 ? checkedInAtMs + durationMs : null,
+    scheduledEndAtMs: progress.scheduledEndAt ? dayjs(progress.scheduledEndAt).valueOf() : null,
+    isOvertime: progress.isOvertime,
+  };
+}
+
+// Last props pushed to the activity — iOS rations Live Activity updates, so
+// the 45s refresh in _layout.tsx only sends one when something changed
+// (in practice: going into overtime). The timer and progress bar tick
+// natively and never need an update.
+let lastLiveActivityProps: string | null = null;
+
+async function showLiveActivity(job: ActiveJobNotificationJob): Promise<void> {
+  const factory = getLiveActivityFactory();
+  if (!factory) return;
+  try {
+    const props = liveActivityPropsFor(job);
+    const serialized = JSON.stringify(props);
+    // Instances survive app restarts, so recover rather than assume — and
+    // never leave more than one running.
+    const [current, ...extras] = factory.getInstances();
+    await Promise.all(extras.map(a => a.end("immediate")));
+
+    if (!current) {
+      factory.start(props, "onclockly://clock");
+    } else if (serialized !== lastLiveActivityProps) {
+      await current.update(props);
+    }
+    lastLiveActivityProps = serialized;
+  } catch (err) {
+    console.warn("Live Activity start/update failed:", err);
+  }
+}
+
+async function endLiveActivity(): Promise<void> {
+  const factory = getLiveActivityFactory();
+  if (!factory) return;
+  lastLiveActivityProps = null;
+  try {
+    await Promise.all(factory.getInstances().map(a => a.end("immediate")));
+  } catch (err) {
+    console.warn("Live Activity end failed:", err);
+  }
+}
+
 // start/update are the same operation — Android's notify() with a stable ID
 // always updates the existing notification in place, so there's no separate
-// "create" vs "patch" native call to make.
+// "create" vs "patch" native call to make. On iOS this starts or updates the
+// Live Activity instead.
 export async function startActiveJobNotification(job: ActiveJobNotificationJob): Promise<void> {
+  if (Platform.OS === "ios") {
+    await showLiveActivity(job);
+    return;
+  }
+
   const checkedInAt = job.workerJobDetails.checkedInAt;
   const progress = computeJobProgress({ ...job, checkedInAt });
 
@@ -124,6 +210,10 @@ export async function startActiveJobNotification(job: ActiveJobNotificationJob):
 export const updateActiveJobNotification = startActiveJobNotification;
 
 export async function stopActiveJobNotification(): Promise<void> {
+  if (Platform.OS === "ios") {
+    await endLiveActivity();
+    return;
+  }
   await cancelActiveJobNotification();
 }
 

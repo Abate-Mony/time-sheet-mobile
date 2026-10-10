@@ -97,6 +97,13 @@
         {
           "faceIDPermission": "Allow OnClockly to use Face ID to unlock the app."
         }
+      ],
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.onclockly.app.ExpoWidgetsTarget",
+          "groupIdentifier": "group.com.onclockly.app"
+        }
       ]
     ],
     "experiments": {

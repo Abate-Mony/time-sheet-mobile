@@ -105,8 +105,8 @@ function NotificationTapHandler() {
   return null;
 }
 
-// Keeps the Android "active job" ongoing notification (services/activeJobNotification.ts)
-// in sync with the backend — the single source of truth for whether a shift
+// Keeps the "active job" ongoing notification on Android / Live Activity on
+// iOS (services/activeJobNotification.ts) in sync with the backend — the single source of truth for whether a shift
 // is actually in-progress. Reuses the same ["active-job"] query the clock
 // tab already owns (React Query dedupes by key, so this doesn't add a
 // second network subscription — it's just another consumer of the same
@@ -136,10 +136,10 @@ function ActiveJobNotificationManager() {
   return null;
 }
 
-// Shift End Alert (services/shiftEndAlert.ts) — cross-platform (unlike
-// ActiveJobNotificationManager above, which is Android-only since it drives
-// a custom native progress notification), so it's its own component rather
-// than folded into that one. Shares the same ["active-job"] query, so this
+// Shift End Alert (services/shiftEndAlert.ts) — a separate concern from
+// ActiveJobNotificationManager above (which drives the ongoing progress
+// notification / Live Activity), so it's its own component rather than
+// folded into that one. Shares the same ["active-job"] query, so this
 // adds no extra network subscription — just another consumer of the same
 // cached result reacting to the same clock-in/out/cancellation/focus events.
 function ShiftEndAlertManager() {
