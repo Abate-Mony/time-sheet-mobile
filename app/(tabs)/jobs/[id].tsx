@@ -1,3 +1,4 @@
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useShiftStartGate } from "@/hooks/shiftgate";
 import { useCompanyPlan } from "@/hooks/useCompanyPlan";
 import {
@@ -141,6 +142,7 @@ function ReasonSheet({
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const tabBarClearance = useTabBarClearance();
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [preferredMap, setPreferredMap] = useState<MapService>("google");
 
@@ -345,7 +347,7 @@ export default function JobDetailScreen() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <ChevronLeft size={17} color="#64748B" />
             <Text style={styles.backText}>Back</Text>

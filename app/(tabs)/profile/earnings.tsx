@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import customFetch from '@/utils/customFetch'
 import { formatDate, formatDuration } from '@/utils/date'
 import type { EarningsPeriod, EarningsResponse, EarningsShift } from '@/utils/types'
@@ -24,6 +25,7 @@ function periodLabel(period: EarningsResponse['period']) {
 
 export default function EarningsScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const [period, setPeriod] = useState<EarningsPeriod>('week')
   const [offset, setOffset] = useState(0)
 
@@ -95,7 +97,7 @@ export default function EarningsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching && !isPlaceholderData} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
       >
         {isLoading ? (
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
   segmentText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
   segmentTextActive: { color: '#0F172A' },
 
-  content: { padding: 16, paddingTop: 12, paddingBottom: 120, gap: 12, flexGrow: 1 },
+  content: { padding: 16, paddingTop: 12, gap: 12, flexGrow: 1 },
 
   periodNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   navButton: {

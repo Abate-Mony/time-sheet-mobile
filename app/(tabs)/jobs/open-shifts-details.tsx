@@ -1,3 +1,4 @@
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useOpenShifts } from "@/hooks/useOpenShifts";
 import { claimOpenShift, takeShiftGiveaway } from "@/utils/api-request-functions";
 import { formatDate, formatDuration } from "@/utils/date";
@@ -30,6 +31,7 @@ const InfoRow = ({ label, value }: InfoRowProps) => (
 
 export default function OpenShiftDetailsScreen() {
   const router = useRouter();
+  const tabBarClearance = useTabBarClearance();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: shifts, isLoading, isError, refetch, isRefetching } = useOpenShifts();
   const [claiming, setClaiming] = useState(false);
@@ -76,7 +78,7 @@ export default function OpenShiftDetailsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={[styles.container, { paddingBottom: tabBarClearance }]}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
         >
           {header}
@@ -117,7 +119,7 @@ export default function OpenShiftDetailsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
       >
         {header}
@@ -185,11 +187,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor:"#F5F7FB",
-    paddingBottom: 100,
   },
   container: {
     padding: 20,
-    paddingBottom: 40,
   },
   header: {
     flexDirection: "row",

@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import { useOpenShifts } from '@/hooks/useOpenShifts'
 import { claimOpenShift, takeShiftGiveaway } from '@/utils/api-request-functions'
 import { formatDate } from '@/utils/date'
@@ -10,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function OpenShiftsScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const [claimingId, setClaimingId] = useState<string | null>(null)
   const { data: shifts, isLoading, isError, refetch, isRefetching } = useOpenShifts()
 
@@ -41,7 +43,7 @@ export default function OpenShiftsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
       >
         {isLoading ? (

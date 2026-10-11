@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import { getMyClaims, withdrawOpenShiftClaim } from '@/utils/api-request-functions'
 import { formatDate } from '@/utils/date'
 import type { ClaimStatus, OpenShiftClaim } from '@/utils/types'
@@ -18,6 +19,7 @@ const STATUS_STYLE: Record<ClaimStatus, { label: string; bg: string; fg: string 
 
 export default function MyClaimsScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
   const { data: claims, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['my-claims'],
@@ -126,7 +128,7 @@ export default function MyClaimsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
       >
         {isLoading ? (
@@ -190,7 +192,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingTop: 12,
-    paddingBottom: 120,
     gap: 12,
     flexGrow: 1,
   },

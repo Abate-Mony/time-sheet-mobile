@@ -1,3 +1,4 @@
+import { useTabBarClearance } from "@/hooks/useTabBarClearance"
 import { RecurringAssignmentCard } from "@/components/RecurringAssignmentCard"
 import customFetch from "@/utils/customFetch"
 import { describeRecurrence, type Frequency } from "@/utils/recurring"
@@ -52,6 +53,7 @@ function useRecurringGroups() {
 
 export default function RecurringAssignmentsScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const { data: groups, isLoading, isError, refetch, isRefetching } = useRecurringGroups()
 
   return (
@@ -65,7 +67,7 @@ export default function RecurringAssignmentsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
       >
         {isLoading ? (
