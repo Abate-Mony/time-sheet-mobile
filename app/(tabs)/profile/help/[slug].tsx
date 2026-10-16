@@ -1,5 +1,6 @@
 import { getArticleBySlug, getCategoryLabel, getRelatedArticles, type HelpSection } from "@/data/helpArticles";
 import { useRecentlyViewedHelp } from "@/hooks/useRecentlyViewedHelp";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react-native";
 import { useEffect } from "react";
@@ -45,6 +46,7 @@ function ArticleSectionView({ section }: { section: HelpSection }) {
 export default function HelpArticleScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const tabBarClearance = useTabBarClearance();
   const article = slug ? getArticleBySlug(slug) : undefined;
   const { markViewed } = useRecentlyViewedHelp();
 
@@ -64,7 +66,7 @@ export default function HelpArticleScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={17} color="#64748B" />
           <Text style={styles.backText}>Back</Text>

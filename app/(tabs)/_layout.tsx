@@ -151,6 +151,38 @@ export default function TabLayout() {
             <TabIcon Icon={Briefcase} focused={focused} label="Jobs" />
           ),
         }}
+        // /jobs/[id] lives inside this tab's own nested stack, but gets
+        // opened from everywhere (notification taps, Home/Clock/Schedule/
+        // Earnings job cards) — pushing it from outside this tab leaves it
+        // sitting on top of this stack indefinitely, since switching tabs
+        // doesn't reset a tab's own history. Without this, tapping the
+        // Jobs icon after any of those shows the stale job-details screen
+        // instead of the all-jobs list the icon promises.
+        // Inlines the RESET action's plain object shape instead of
+        // importing CommonActions from @react-navigation/native — Metro
+        // hard-errors on any "@react-navigation/*" import under expo-router
+        // on this Expo SDK (see useTabBarClearance.ts's note on the same
+        // restriction). `navigation` here is a prop expo-router hands us,
+        // not something we imported, so dispatching a plain action object
+        // on it is fine.
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            const state = navigation.getState()
+            const jobsRoute = state.routes.find((r: any) => r.name === "jobs")
+            if (jobsRoute?.state && jobsRoute.state.index > 0) {
+              navigation.dispatch({
+                type: "RESET",
+                payload: {
+                  ...state,
+                  routes: state.routes.map((r: any) =>
+                    r.name === "jobs" ? { ...r, state: undefined } : r
+                  ),
+                },
+                target: state.key,
+              })
+            }
+          },
+        })}
       />
 
       <Tabs.Screen

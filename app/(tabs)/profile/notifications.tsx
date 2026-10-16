@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import { queryClient } from '@/lib/queryClient'
 import {
   getNotificationPreferences,
@@ -76,6 +77,7 @@ function ChannelSwitch({
 
 export default function NotificationsScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const { data, isLoading, isError, refetch } = useQuery(notificationPreferencesQuery)
   const prefs = data?.preferences
 
@@ -129,7 +131,7 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={16} color="#64748B" />
           <Text style={styles.backText}>Back</Text>

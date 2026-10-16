@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import { cancelTimeOffRequest, getMyTimeOffRequests, requestTimeOff } from '@/utils/api-request-functions'
 import type { TimeOffRequest, TimeOffStatus, TimeOffType } from '@/utils/types'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -87,6 +88,7 @@ function DateField({
 
 export default function TimeOffScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
 
   const { data: requests, isLoading, isError, refetch } = useQuery(timeOffQuery)
 
@@ -136,7 +138,7 @@ export default function TimeOffScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={16} color="#64748B" />
           <Text style={styles.backText}>Back</Text>

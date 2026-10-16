@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import { getToken } from '@/utils/auth'
 import { BASE_URL } from '@/utils/customFetch'
 import { formatDate, formatDuration } from '@/utils/date'
@@ -55,6 +56,7 @@ function shiftAnchor(type: TimesheetPeriodType, anchor: Dayjs, direction: 1 | -1
 
 export default function DownloadTimeSheetScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
 
   const [periodType, setPeriodType] = useState<TimesheetPeriodType>('weekly')
   const [anchor, setAnchor] = useState(() => dayjs())

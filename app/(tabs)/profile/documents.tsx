@@ -1,3 +1,4 @@
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { deleteMyDocument, getMyDocuments, uploadMyDocument } from "@/utils/api-request-functions";
 import type { WorkerDocument } from "@/utils/types";
 import { isAxiosError } from "axios";
@@ -37,6 +38,7 @@ type PendingFile = { uri: string; name: string; mimeType: string; size?: number 
 
 export default function WorkerDocumentsScreen() {
   const router = useRouter();
+  const tabBarClearance = useTabBarClearance();
   const queryClient = useQueryClient();
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [docName, setDocName] = useState("");
@@ -123,7 +125,7 @@ export default function WorkerDocumentsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={17} color="#64748B" />
           <Text style={styles.backText}>Back</Text>

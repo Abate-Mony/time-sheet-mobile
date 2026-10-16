@@ -7,6 +7,7 @@ import {
   type HelpCategoryDef,
 } from "@/data/helpArticles";
 import { useRecentlyViewedHelp } from "@/hooks/useRecentlyViewedHelp";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LifeBuoy, Search, X } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -61,6 +62,7 @@ function CategoryRow({ category, onPress }: { category: HelpCategoryDef; onPress
 
 export default function HelpCentreScreen() {
   const router = useRouter();
+  const tabBarClearance = useTabBarClearance();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
@@ -82,7 +84,7 @@ export default function HelpCentreScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <Pressable
           style={styles.backButton}
           onPress={() => (activeCategory ? setCategoryId(null) : router.back())}

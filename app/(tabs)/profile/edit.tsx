@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/avatar"
 import { useAuth } from "@/context/AuthContext"
+import { useTabBarClearance } from "@/hooks/useTabBarClearance"
 import { deleteProfilePhoto, updateWorkerProfile, uploadProfilePhoto } from "@/utils/api-request-functions"
 import { editProfileSchema } from "@/utils/schema"
 import type { EditProfileForm, EditProfileFormInput, User } from "@/utils/types"
@@ -28,6 +29,7 @@ function FieldError({ message }: { message?: string }) {
 
 export default function EditProfileScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const { user, updateUser } = useAuth()
   const [photoBusy, setPhotoBusy] = useState(false)
 
@@ -90,7 +92,7 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={16} color="#64748B" />
           <Text style={styles.backText}>Back</Text>
