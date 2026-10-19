@@ -1,6 +1,7 @@
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useShiftStartGate } from "@/hooks/shiftgate";
 import { useCompanyPlan } from "@/hooks/useCompanyPlan";
+import { useAuth } from "@/context/AuthContext";
 import {
   cancelShiftGiveaway,
   changeWorkerJobStaus,
@@ -182,7 +183,8 @@ export default function JobDetailScreen() {
     enabled: !!id,
   });
 
-  const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job?.date, job?.startTime, job?.endTime);
+  const { user } = useAuth();
+  const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job?.date, job?.startTime, job?.endTime, user?.companyTimezone);
 
   const checklistMutation = useMutation({
     mutationFn: ({ itemId, done }: { itemId: string; done: boolean }) => toggleChecklistItem(id!, itemId, done),

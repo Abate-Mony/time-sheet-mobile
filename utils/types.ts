@@ -92,6 +92,8 @@ export interface User {
   phone?: string
   gender?: "Male" | "Female" | "Other" | "Prefer not to say"
   profilePhoto?: FileRef | null
+  /** IANA timezone (e.g. "Europe/London") the company's shifts are scheduled in. */
+  companyTimezone?: string
 }
 
 // Payload shape sent to the API (post-transform: no empty-string gender).

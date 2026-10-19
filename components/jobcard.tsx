@@ -1,4 +1,5 @@
 import { useShiftStartGate } from '@/hooks/shiftgate'
+import { useAuth } from '@/context/AuthContext'
 import { changeWorkerJobStaus } from '@/utils/api-request-functions'
 import { formatDate, formatDuration, formatTimeUntil } from '@/utils/date'
 import { WorkerJob } from '@/utils/types'
@@ -120,7 +121,8 @@ export default function JobCard(job: WorkerJob) {
     const [error, setError] = useState<string | null>(null)
     const [showDeclineModal, setShowDeclineModal] = useState(false)
     const router = useRouter()
-    const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job.date, job.startTime, job.endTime)
+    const { user } = useAuth()
+    const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job.date, job.startTime, job.endTime, user?.companyTimezone)
 
     useEffect(() => {
         if (!error) return
