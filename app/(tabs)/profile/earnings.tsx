@@ -1,3 +1,4 @@
+import { openJob } from "@/utils/openJob";
 import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import customFetch from '@/utils/customFetch'
 import { formatDate, formatDuration } from '@/utils/date'
@@ -48,7 +49,7 @@ export default function EarningsScreen() {
     <Pressable
       key={s.assignmentId}
       style={styles.shiftRow}
-      onPress={() => router.push({ pathname: '/jobs/[id]', params: { id: s.job._id } })}
+      onPress={() => openJob(s.job._id)}
     >
       <View style={styles.shiftDate}>
         <Text style={styles.shiftDay}>{formatDate(s.job.date, 'ddd')}</Text>

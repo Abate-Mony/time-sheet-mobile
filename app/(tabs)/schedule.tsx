@@ -1,10 +1,11 @@
+import { openJob } from "@/utils/openJob";
 import customFetch from "@/utils/customFetch";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import type { CreateJobForm } from "@/utils/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -120,18 +121,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ShiftRow({ job }: { job: CreateJobForm }) {
-  const router = useRouter();
   const pay = estimatedPay(job);
 
   return (
     <Pressable
       onPress={() => {
         if (!job._id) return;
-
-        router.push({
-          pathname: "/(tabs)/jobs/[id]",
-          params: { id: job._id },
-        });
+        openJob(job._id);
       }}
       style={({ pressed }) => [styles.shiftRow, pressed && styles.shiftRowPressed]}
     >

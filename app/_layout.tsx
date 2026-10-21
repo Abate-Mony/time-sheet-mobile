@@ -1,4 +1,5 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { notificationLinkToRoute } from '@/hooks/useNotifications';
 import { queryClient } from '@/lib/queryClient';
 import { focusManager, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
@@ -37,9 +38,6 @@ function SplashScreenController() {
   return null;
 }
 
-// Deep-links a tapped push notification to the job it's about — payloads
-// carry the same web-style `url` (e.g. "/worker/jobs/<id>") the browser
-// Web Push notifications use, so this just extracts the id from it.
 // React Query's focus-refetch machinery is a web concept by default
 // ("window" blur/focus) — on React Native nothing ever calls it, so every
 // query just sits on whatever it fetched once and never refreshes on its
@@ -83,6 +81,13 @@ function OfflineSyncManager() {
   return null;
 }
 
+// Deep-links a tapped push notification to the screen it's about. Payloads
+// carry the same web-style `url` the browser Web Push notifications use
+// ("/worker/jobs/<id>", "/worker/jobs/open-shifts", "/worker/profile", ...),
+// converted the same way the inbox does (notificationLinkToRoute) — not by
+// pulling an id out of any "/worker/jobs/<x>", which used to treat
+// "open-shifts" as a job id. `withAnchor` keeps the tab's main screen under
+// whatever opens (see utils/openJob.ts).
 function NotificationTapHandler() {
   const router = useRouter();
 
@@ -91,14 +96,8 @@ function NotificationTapHandler() {
       // Whatever this push was about likely also landed in the inbox.
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
 
-      const url = data?.url as string | undefined;
-      const jobId = url?.match(/\/worker\/jobs\/([^/?#]+)/)?.[1];
-
-      if (jobId) {
-        router.push({ pathname: "/jobs/[id]", params: { id: jobId } });
-      } else {
-        router.push("/(tabs)/jobs");
-      }
+      const route = notificationLinkToRoute((data?.url as string | undefined) ?? null);
+      router.push((route ?? "/(tabs)/jobs") as any, { withAnchor: true });
     });
   }, [router]);
 

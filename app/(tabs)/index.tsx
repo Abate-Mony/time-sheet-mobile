@@ -1,3 +1,4 @@
+import { openJob } from "@/utils/openJob";
 import { workerDashboardstats } from "@/app/(tabs)/profile"
 import { useAuth } from "@/context/AuthContext"
 import { useUnreadNotificationCount } from "@/hooks/useNotifications"
@@ -187,7 +188,7 @@ export default function DashboardScreen() {
             flex: 0,
             display: "flex",
             flexDirection: "row",
-            columnGap:6
+            columnGap: 6
           }}>
             <Pressable
               onPress={() => router.push("/inbox")}
@@ -249,7 +250,7 @@ export default function DashboardScreen() {
         {/* Earnings */}
         {monthly ? (
           <Pressable
-            onPress={() => router.push("/(tabs)/profile/earnings")}
+            onPress={() => router.push("/(tabs)/profile/earnings", { withAnchor: true })}
             style={{ backgroundColor: "#1E3A5F", borderRadius: 18, padding: 20, overflow: "hidden" }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -451,7 +452,7 @@ export default function DashboardScreen() {
               {upcomingShifts.map(job => (
                 <Pressable
                   key={job._id}
-                  onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: job._id } })}
+                  onPress={() => openJob(job._id)}
                   style={({ pressed }) => ({
                     backgroundColor: "#FFFFFF",
                     borderRadius: 14,

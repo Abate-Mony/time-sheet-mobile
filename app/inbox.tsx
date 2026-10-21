@@ -33,7 +33,7 @@ export default function InboxScreen() {
   const open = (n: InboxNotification) => {
     if (!n.isRead) markNotificationRead(n._id)
     const route = notificationLinkToRoute(n.link)
-    if (route) router.push(route as any)
+    if (route) router.push(route as any, { withAnchor: true })
   }
 
   const renderItem = ({ item }: { item: InboxNotification }) => (
@@ -74,7 +74,7 @@ export default function InboxScreen() {
             )}
             <Pressable
               style={styles.iconButton}
-              onPress={() => router.push('/(tabs)/profile/notifications')}
+              onPress={() => router.push('/(tabs)/profile/notifications', { withAnchor: true })}
               hitSlop={6}
             >
               <Settings2 size={16} color="#1E3A5F" />

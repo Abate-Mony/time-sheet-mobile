@@ -1,4 +1,5 @@
 
+import { openJob } from "@/utils/openJob";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -360,12 +361,7 @@ export default function ClockScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
       >
         <Pressable
-          onPress={() => {
-            router.push({
-              pathname: "/jobs/[id]",
-              params: { id: job._id! },
-            })
-          }}
+          onPress={() => openJob(job._id!)}
         >
 
 

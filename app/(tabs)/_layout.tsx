@@ -86,6 +86,32 @@ function TabIcon({
   )
 }
 
+// Tapping a tab's icon always lands on that tab's main screen. The Jobs and
+// Profile tabs have their own stacks whose inner screens get opened from
+// other tabs too (a job from Home/Clock/Schedule, Earnings from Home), and
+// switching tabs doesn't reset a tab's own history — so without this, the
+// icon shows whatever inner screen was last left open. Those cross-tab links
+// pass `withAnchor` (see utils/openJob.ts) so the main screen is always
+// underneath to pop back to.
+//
+// Inlines the POP_TO_TOP action's plain object shape instead of importing
+// StackActions from @react-navigation/native — Metro hard-errors on any
+// "@react-navigation/*" import under expo-router on this Expo SDK (see
+// useTabBarClearance.ts's note on the same restriction). It targets the
+// tab's OWN stack key, not the tab navigator: an earlier version RESET the
+// whole tab navigator from a snapshot and raced under rapid taps; popping a
+// single stack that's already at the top is just a no-op.
+function popToTopOnTabPress(tabName: string) {
+  return ({ navigation }: { navigation: any }) => ({
+    tabPress: () => {
+      const tab = navigation.getState().routes.find((r: any) => r.name === tabName)
+      if (tab?.state && tab.state.index > 0 && tab.state.key) {
+        navigation.dispatch({ type: "POP_TO_TOP", target: tab.state.key })
+      }
+    },
+  })
+}
+
 export default function TabLayout() {
   const { width: screenWidth } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -108,8 +134,7 @@ export default function TabLayout() {
         tabBarIconStyle: {
           width: 64,
           height: 54,
-          paddingBottom: 6,
-          borderRadius: 999,
+          paddingBottom: 6
         },
 
         tabBarStyle: {
@@ -152,42 +177,7 @@ export default function TabLayout() {
             <TabIcon Icon={Briefcase} focused={focused} label="Jobs" />
           ),
         }}
-        // /jobs/[id] lives inside this tab's own nested stack, but gets
-        // opened from everywhere (notification taps, Home/Clock/Schedule/
-        // Earnings job cards) — pushing it from outside this tab leaves it
-        // sitting on top of this stack indefinitely, since switching tabs
-        // doesn't reset a tab's own history. Without this, tapping the
-        // Jobs icon after any of those shows the stale job-details screen
-        // instead of the all-jobs list the icon promises.
-        // Inlines the POP_TO_TOP action's plain object shape instead of
-        // importing StackActions from @react-navigation/native — Metro
-        // hard-errors on any "@react-navigation/*" import under expo-router
-        // on this Expo SDK (see useTabBarClearance.ts's note on the same
-        // restriction). `navigation` here is a prop expo-router hands us,
-        // not something we imported, so dispatching a plain action object
-        // on it is fine.
-        //
-        // Targets the Jobs stack's OWN key (not the parent tab navigator)
-        // and only pops that one stack — an earlier version rebuilt a full
-        // RESET of the whole tab navigator's route list from a snapshot,
-        // which raced under rapid repeated taps (a stale read of a
-        // *sibling* tab's nested state could make the reconstructed payload
-        // not match React Navigation's actual live state, producing an
-        // "onUnhandledAction" dev warning). POP_TO_TOP targeted at a single
-        // stack's key doesn't have that problem — popping an already-top
-        // stack is just a no-op, not a race.
-        listeners={({ navigation }) => ({
-          tabPress: () => {
-            const state = navigation.getState()
-            const jobsRoute = state.routes.find((r: any) => r.name === "jobs")
-            if (jobsRoute?.state && jobsRoute.state.index > 0 && jobsRoute.state.key) {
-              navigation.dispatch({
-                type: "POP_TO_TOP",
-                target: jobsRoute.state.key,
-              })
-            }
-          },
-        })}
+        listeners={popToTopOnTabPress("jobs")}
       />
 
       <Tabs.Screen
@@ -219,6 +209,7 @@ export default function TabLayout() {
             <TabIcon Icon={User} focused={focused} label="Profile" />
           ),
         }}
+        listeners={popToTopOnTabPress("profile")}
       />
     </Tabs>
   )

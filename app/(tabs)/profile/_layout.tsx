@@ -1,6 +1,13 @@
 import { Stack } from "expo-router"
 
-export default function JobsStackLayout() {
+// The main Profile screen is always the bottom of this stack, even when an
+// inner screen (e.g. Earnings) is opened from another tab with `withAnchor`
+// — so the Profile tab icon can always pop back to it.
+export const unstable_settings = {
+  anchor: "index",
+}
+
+export default function ProfileStackLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />

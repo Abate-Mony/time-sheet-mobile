@@ -1,3 +1,4 @@
+import { openJob } from "@/utils/openJob";
 import { formatDate } from "@/utils/date"
 import { useRouter } from "expo-router"
 import { ArrowRight, Briefcase, Calendar, Clock } from "lucide-react-native"
@@ -32,7 +33,7 @@ export function NoActiveShift({ nextShift }: { nextShift?: NextShift }) {
       {nextShift ? (
         <Pressable
           style={styles.nextShiftCard}
-          onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: nextShift._id } })}
+          onPress={() => openJob(nextShift._id)}
         >
           <View style={styles.nextShiftHeader}>
             <Calendar size={13} color="#1E3A5F" />

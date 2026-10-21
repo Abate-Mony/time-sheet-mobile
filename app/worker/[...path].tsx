@@ -10,14 +10,16 @@ import { useEffect } from "react"
 // as a normal in-app route — e.g. a "New shift assigned" email linking to
 // https://app.onclockly.com/worker/jobs/<id> lands on this app's own
 // /jobs/[id], the same screen NotificationTapHandler (app/_layout.tsx)
-// already opens for a tapped push notification.
+// already opens for a tapped push notification. `withAnchor` keeps the tab's
+// main screen underneath (see utils/openJob.ts), so a link into a job or a
+// Profile screen doesn't leave that tab stuck on it.
 export default function WorkerLinkRedirect() {
   const { path } = useLocalSearchParams<{ path?: string[] }>()
   const router = useRouter()
 
   useEffect(() => {
     const target = path && path.length ? `/${path.join("/")}` : "/"
-    router.replace(target as any)
+    router.replace(target as any, { withAnchor: true })
   }, [path, router])
 
   return null
