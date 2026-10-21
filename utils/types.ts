@@ -456,6 +456,13 @@ export interface EarningsTotals {
   shifts: number
 }
 
+export interface EarnedTotals extends EarningsTotals {
+  /** Pay at the base rate — amount minus overtimeAmount. */
+  regularAmount: number
+  /** Manager-approved overtime pay only, already included in amount. */
+  overtimeAmount: number
+}
+
 export interface EarningsShift {
   assignmentId: string
   job: Pick<Job, "_id" | "title" | "date" | "startTime" | "endTime" | "minutes" | "location">
@@ -466,10 +473,41 @@ export interface EarningsShift {
   overtimePendingMinutes: number
 }
 
+// ── Route optimization (GET /workers/me/route) ───────────────────────────────
+// Straight-line (haversine) nearest-neighbor ordering — no paid routing API,
+// so distances are an as-the-crow-flies approximation, not real road distance.
+
+export interface RouteStopResult {
+  jobId: string
+  order: number
+  distanceFromPreviousKm: number
+  title: string
+  location: string
+  address: string
+  startTime: string
+  endTime: string
+  coordinates: { lat: number; lng: number }
+}
+
+export interface RouteSkippedJob {
+  jobId: string
+  title: string
+}
+
+export interface MyRouteResponse {
+  date: string
+  totalDistanceKm: number
+  stops: RouteStopResult[]
+  /** Jobs that day with no saved coordinates — left out of the route rather than guessed at. */
+  skipped: RouteSkippedJob[]
+}
+
 export interface EarningsResponse {
   period: { type: EarningsPeriod; offset: number; start: string; end: string }
-  earned: EarningsTotals
+  earned: EarnedTotals
   upcoming: EarningsTotals
+  /** Overtime pay awaiting manager approval — not included in earned.amount. */
+  pendingOvertimeAmount: number
   shifts: EarningsShift[]
 }
 

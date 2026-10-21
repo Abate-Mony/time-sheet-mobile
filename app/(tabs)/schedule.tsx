@@ -1,15 +1,19 @@
 import { openJob } from "@/utils/openJob";
 import customFetch from "@/utils/customFetch";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
-import type { CreateJobForm } from "@/utils/types";
+import { getCurrentPosition } from "@/utils/getPosition";
+import { buildMapUrl } from "@/utils/mapLinks";
+import type { CreateJobForm, MyRouteResponse } from "@/utils/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useFocusEffect } from "expo-router";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react-native";
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Navigation, Route, X } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -188,10 +192,99 @@ function UpcomingRow({ job, onJump }: { job: CreateJobForm; onJump: () => void }
   );
 }
 
+function RouteModal({ date, onClose }: { date: string; onClose: () => void }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["worker-route", date],
+    queryFn: async () => {
+      const position = await getCurrentPosition();
+      const { data } = await customFetch.get<MyRouteResponse>("/workers/me/route", {
+        params: { date, ...(position ? { lat: position.lat, lng: position.lng } : {}) },
+      });
+      return data;
+    },
+  });
+
+  const openInMaps = (stop: MyRouteResponse["stops"][number]) => {
+    const url = buildMapUrl("google", { lat: stop.coordinates.lat, lng: stop.coordinates.lng, address: stop.address });
+    if (url) Linking.openURL(url);
+  };
+
+  return (
+    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={styles.routeScreen} edges={["top"]}>
+        <View style={styles.routeHeader}>
+          <View>
+            <Text style={styles.routeTitle}>Today&apos;s route</Text>
+            <Text style={styles.routeSubtitle}>{dayjs(date).format("dddd, D MMMM")}</Text>
+          </View>
+          <Pressable onPress={onClose} hitSlop={8} style={styles.routeCloseButton}>
+            <X size={18} color="#64748B" />
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.routeContent}>
+          {isLoading ? (
+            <ActivityIndicator style={{ marginTop: 32 }} color="#1E3A5F" />
+          ) : isError || !data ? (
+            <Text style={styles.routeEmptyText}>Couldn&apos;t work out a route. Try again shortly.</Text>
+          ) : data.stops.length === 0 ? (
+            <Text style={styles.routeEmptyText}>No jobs with a saved location on this day.</Text>
+          ) : (
+            <>
+              <View style={styles.routeSummaryCard}>
+                <Text style={styles.routeSummaryLabel}>APPROXIMATE DISTANCE</Text>
+                <Text style={styles.routeSummaryValue}>{data.totalDistanceKm} km</Text>
+                <Text style={styles.routeSummaryNote}>
+                  Straight-line estimate between stops, not real road distance.
+                </Text>
+              </View>
+
+              {data.stops.map((stop, index) => (
+                <View key={stop.jobId} style={styles.routeStopRow}>
+                  <View style={styles.routeStopLeft}>
+                    <View style={styles.routeOrderBadge}>
+                      <Text style={styles.routeOrderBadgeText}>{stop.order + 1}</Text>
+                    </View>
+                    {index < data.stops.length - 1 && <View style={styles.routeConnector} />}
+                  </View>
+
+                  <View style={styles.routeStopInfo}>
+                    <Text style={styles.routeStopTitle} numberOfLines={1}>{stop.title}</Text>
+                    <Text style={styles.routeStopMeta} numberOfLines={1}>
+                      {stop.startTime}–{stop.endTime} · {stop.location}
+                    </Text>
+                    {stop.distanceFromPreviousKm > 0 && (
+                      <Text style={styles.routeStopDistance}>{stop.distanceFromPreviousKm} km from previous stop</Text>
+                    )}
+                  </View>
+
+                  <Pressable onPress={() => openInMaps(stop)} style={styles.routeNavButton} hitSlop={6}>
+                    <Navigation size={14} color="#1E3A5F" />
+                  </Pressable>
+                </View>
+              ))}
+
+              {data.skipped.length > 0 && (
+                <View style={styles.routeSkippedBanner}>
+                  <MapPin size={14} color="#92400E" style={{ marginTop: 1 }} />
+                  <Text style={styles.routeSkippedText}>
+                    {data.skipped.map(s => s.title).join(", ")} {data.skipped.length === 1 ? "has" : "have"} no saved location, so {data.skipped.length === 1 ? "it isn't" : "they aren't"} included above.
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
 export default function ScheduleScreen() {
   const tabBarClearance = useTabBarClearance();
   const [viewedMonth, setViewedMonth] = useState(() => dayjs().startOf("month"));
   const [selectedDate, setSelectedDate] = useState(() => dayjs().format("YYYY-MM-DD"));
+  const [routeModalOpen, setRouteModalOpen] = useState(false);
 
   const monthStart = viewedMonth;
   const monthEnd = viewedMonth.endOf("month");
@@ -396,7 +489,15 @@ export default function ScheduleScreen() {
 
         {/* Selected day panel */}
         <View style={styles.dayPanel}>
-          <Text style={styles.agendaTitle}>{dayHeading(selectedDate)}</Text>
+          <View style={styles.dayPanelHeader}>
+            <Text style={styles.agendaTitle}>{dayHeading(selectedDate)}</Text>
+            {selectedDayJobs.length >= 2 && (
+              <Pressable onPress={() => setRouteModalOpen(true)} style={styles.optimizeButton} hitSlop={6}>
+                <Route size={13} color="#1E3A5F" />
+                <Text style={styles.optimizeButtonText}>Optimize route</Text>
+              </Pressable>
+            )}
+          </View>
 
           {monthLoading && !monthData ? (
             <View style={styles.emptyCard}>
@@ -440,6 +541,8 @@ export default function ScheduleScreen() {
           )}
         </View>
       </ScrollView>
+
+      {routeModalOpen && <RouteModal date={selectedDate} onClose={() => setRouteModalOpen(false)} />}
     </SafeAreaView>
   );
 }
@@ -625,6 +728,28 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
+  dayPanelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  optimizeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#EFF6FF",
+  },
+
+  optimizeButtonText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#1E3A5F",
+  },
+
   emptyDayState: {
     alignItems: "center",
     justifyContent: "center",
@@ -780,4 +905,87 @@ const styles = StyleSheet.create({
     color: "#64748B",
     textAlign: "center",
   },
+
+  routeScreen: { flex: 1, backgroundColor: "#F5F5F5" },
+  routeHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  routeTitle: { fontSize: 18, fontWeight: "800", color: "#0F172A" },
+  routeSubtitle: { marginTop: 2, fontSize: 12, color: "#94A3B8" },
+  routeCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  routeContent: { padding: 16, paddingTop: 0, gap: 10 },
+  routeEmptyText: { marginTop: 32, textAlign: "center", fontSize: 13, color: "#94A3B8" },
+
+  routeSummaryCard: {
+    backgroundColor: "#1E3A5F",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 6,
+  },
+  routeSummaryLabel: { fontSize: 10, fontWeight: "700", color: "rgba(255,255,255,0.5)", letterSpacing: 0.6 },
+  routeSummaryValue: { marginTop: 3, fontSize: 24, fontWeight: "800", color: "#FFFFFF" },
+  routeSummaryNote: { marginTop: 6, fontSize: 11, color: "rgba(255,255,255,0.55)" },
+
+  routeStopRow: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+  },
+  routeStopLeft: { alignItems: "center" },
+  routeOrderBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    backgroundColor: "#1E3A5F",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routeOrderBadgeText: { fontSize: 12, fontWeight: "800", color: "#FFFFFF" },
+  routeConnector: { width: 2, flex: 1, backgroundColor: "#E2E8F0", marginTop: 4 },
+
+  routeStopInfo: { flex: 1 },
+  routeStopTitle: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
+  routeStopMeta: { marginTop: 2, fontSize: 12, color: "#64748B" },
+  routeStopDistance: { marginTop: 3, fontSize: 11, fontWeight: "600", color: "#1D4ED8" },
+
+  routeNavButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+  },
+
+  routeSkippedBanner: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FEF3C7",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+  },
+  routeSkippedText: { flex: 1, fontSize: 11, color: "#92400E", lineHeight: 15 },
 });

@@ -1,17 +1,73 @@
+import { useTabBarClearance } from '@/hooks/useTabBarClearance';
+import customFetch from '@/utils/customFetch';
+import { formatDate, formatDuration } from '@/utils/date';
 import { openJob } from "@/utils/openJob";
-import { useTabBarClearance } from '@/hooks/useTabBarClearance'
-import customFetch from '@/utils/customFetch'
-import { formatDate, formatDuration } from '@/utils/date'
-import type { EarningsPeriod, EarningsResponse, EarningsShift } from '@/utils/types'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import dayjs from 'dayjs'
-import { useRouter } from 'expo-router'
-import { AlertCircle, ChevronLeft, ChevronRight, Wallet } from 'lucide-react-native'
-import { useState } from 'react'
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import type { EarningsPeriod, EarningsResponse, EarningsShift } from '@/utils/types';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import { useRouter } from 'expo-router';
+import { AlertCircle, ChevronLeft, ChevronRight, Clock, FileText, ShieldCheck, Wallet, WalletCards } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const money = (n: number) => `£${n.toFixed(2)}`
+
+function EarningsHero({ data }: { data: EarningsResponse }) {
+  return (
+    <View style={styles.hero}>
+      <View style={styles.heroTop}>
+        <View>
+          <Text style={styles.heroLabel}>EARNED THIS PERIOD</Text>
+          <Text style={styles.heroAmount}>{money(data.earned.amount)}</Text>
+          <View style={styles.heroBadgeRow}>
+            <ShieldCheck size={12} color="#6EE7B7" />
+            <Text style={styles.heroBadgeText}>{data.earned.shifts} completed shift{data.earned.shifts === 1 ? '' : 's'}</Text>
+          </View>
+        </View>
+        <View style={styles.heroIconBox}>
+          <WalletCards size={18} color="#FFFFFF" />
+        </View>
+      </View>
+      <View style={styles.heroStats}>
+        <View style={styles.heroStat}>
+          <Text style={styles.heroStatLabel}>HOURS WORKED</Text>
+          <Text style={styles.heroStatValue}>{formatDuration(data.earned.minutes)}</Text>
+        </View>
+        <View style={styles.heroStat}>
+          <Text style={styles.heroStatLabel}>UPCOMING</Text>
+          <Text style={styles.heroStatValue}>{money(data.upcoming.amount)}</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function PayBreakdown({ earned }: { earned: EarningsResponse['earned'] }) {
+  if (earned.amount <= 0) return null
+  const rows = [
+    { label: 'Regular pay', value: earned.regularAmount, color: '#3B82F6' },
+    ...(earned.overtimeAmount > 0 ? [{ label: 'Approved overtime', value: earned.overtimeAmount, color: '#8B5CF6' }] : []),
+  ]
+  return (
+    <View style={styles.breakdownCard}>
+      <Text style={styles.breakdownTitle}>Pay breakdown</Text>
+      <View style={{ gap: 14 }}>
+        {rows.map(row => (
+          <View key={row.label}>
+            <View style={styles.breakdownRowTop}>
+              <Text style={styles.breakdownLabel}>{row.label}</Text>
+              <Text style={styles.breakdownValue}>{money(row.value)}</Text>
+            </View>
+            <View style={styles.breakdownTrack}>
+              <View style={[styles.breakdownFill, { backgroundColor: row.color, width: `${Math.min(100, (row.value / earned.amount) * 100)}%` }]} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
 
 function periodLabel(period: EarningsResponse['period']) {
   const start = dayjs(period.start)
@@ -96,7 +152,6 @@ export default function EarningsScreen() {
           ))}
         </View>
       </View>
-
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={isRefetching && !isPlaceholderData} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
@@ -125,24 +180,22 @@ export default function EarningsScreen() {
                 <ChevronRight size={16} color="#1E3A5F" />
               </Pressable>
             </View>
-
-            <View style={[styles.summaryCard, isPlaceholderData && styles.dimmed]}>
-              <Text style={styles.summaryLabel}>EARNED</Text>
-              <Text style={styles.summaryValue}>{money(data.earned.amount)}</Text>
-              <View style={styles.summaryStats}>
-                <View style={styles.summaryStat}>
-                  <Text style={styles.summaryStatValue}>{formatDuration(data.earned.minutes)}</Text>
-                  <Text style={styles.summaryStatLabel}>Worked</Text>
+            <View style={isPlaceholderData && styles.dimmed}>
+              <EarningsHero data={data} />
+              <PayBreakdown earned={data.earned} />
+              {data.pendingOvertimeAmount > 0 && (
+                <View style={styles.pendingBanner}>
+                  <Clock size={16} color="#B45309" style={{ marginTop: 1 }} />
+                  <View style={styles.flex1}>
+                    <Text style={styles.pendingTitle}>{money(data.pendingOvertimeAmount)} pending approval</Text>
+                    <Text style={styles.pendingText}>Overtime awaiting your manager&apos;s review isn&apos;t included in the total above.</Text>
+                  </View>
                 </View>
-                <View style={styles.summaryStat}>
-                  <Text style={styles.summaryStatValue}>{data.earned.shifts}</Text>
-                  <Text style={styles.summaryStatLabel}>Shifts</Text>
-                </View>
-                <View style={styles.summaryStat}>
-                  <Text style={styles.summaryStatValue}>{money(data.upcoming.amount)}</Text>
-                  <Text style={styles.summaryStatLabel}>Upcoming</Text>
-                </View>
-              </View>
+              )}
+              <Pressable style={styles.timesheetButton} onPress={() => router.push('/(tabs)/profile/download-time-sheet')}>
+                <FileText size={15} color="#FFFFFF" />
+                <Text style={styles.timesheetButtonText}>View &amp; export timesheet</Text>
+              </Pressable>
             </View>
 
             {data.shifts.length === 0 ? (
@@ -208,19 +261,71 @@ const styles = StyleSheet.create({
   navButtonDisabled: { opacity: 0.35 },
   periodLabel: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
 
-  summaryCard: { backgroundColor: '#1E3A5F', borderRadius: 18, padding: 20 },
-  summaryLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.7 },
-  summaryValue: { marginTop: 4, fontSize: 30, fontWeight: '800', color: '#FFFFFF' },
-  summaryStats: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  summaryStat: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+  hero: { backgroundColor: '#1E3A5F', borderRadius: 20, padding: 20 },
+  heroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  heroLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.7 },
+  heroAmount: { marginTop: 4, fontSize: 32, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 },
+  heroBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
+  heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#6EE7B7' },
+  heroIconBox: {
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  summaryStatValue: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
-  summaryStatLabel: { marginTop: 3, fontSize: 10, color: 'rgba(255,255,255,0.5)' },
+  heroStats: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  heroStat: { flex: 1 },
+  heroStatLabel: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5 },
+  heroStatValue: { marginTop: 3, fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+
+  breakdownCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    marginTop: 12,
+  },
+  breakdownTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 14 },
+  breakdownRowTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 },
+  breakdownLabel: { fontSize: 13, fontWeight: '600', color: '#334155' },
+  breakdownValue: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  breakdownTrack: { height: 6, borderRadius: 3, backgroundColor: '#F1F5F9', overflow: 'hidden' },
+  breakdownFill: { height: '100%', borderRadius: 3 },
+
+  pendingBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+  },
+  pendingTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
+  pendingText: { fontSize: 11, color: '#B45309', marginTop: 2, lineHeight: 15 },
+
+  timesheetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#1E3A5F',
+    marginTop: 12,
+  },
+  timesheetButtonText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 
   dimmed: { opacity: 0.5 },
 

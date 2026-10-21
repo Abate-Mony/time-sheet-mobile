@@ -8,13 +8,15 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  CircleDollarSign,
   Download,
   HelpCircle,
   LogOut,
   Paperclip,
   Phone,
+  ShieldCheck,
   Trash2,
-  Zap,
+  WalletCards,
 } from "lucide-react-native";
 import { useCallback } from "react";
 import {
@@ -207,6 +209,13 @@ export default function ProfileScreen() {
 
   const settings = [
     {
+      label: "Earnings",
+      icon: CircleDollarSign,
+      sub: "Approved pay and overtime",
+      to: "/(tabs)/profile/earnings",
+    },
+
+    {
       label: "Download Timesheet",
       icon: Download,
       sub: "July 2025",
@@ -353,14 +362,21 @@ export default function ProfileScreen() {
               >
                 £{monthly.earnings}
               </Text>
+
+              <View style={styles.earningsBadgeRow}>
+                <ShieldCheck size={12} color="#6EE7B7" />
+                <Text style={styles.earningsBadgeText}>
+                  {jobStats.completed} job{jobStats.completed === 1 ? "" : "s"} completed
+                </Text>
+              </View>
             </View>
 
             <View
               style={styles.zapIcon}
             >
-              <Zap
-                size={19}
-                color="#93C5FD"
+              <WalletCards
+                size={18}
+                color="#FFFFFF"
               />
             </View>
           </View>
@@ -375,6 +391,14 @@ export default function ProfileScreen() {
             >
               <Text
                 style={
+                  styles.earningStatLabel
+                }
+              >
+                HOURS
+              </Text>
+
+              <Text
+                style={
                   styles.earningStatValue
                 }
               >
@@ -383,14 +407,6 @@ export default function ProfileScreen() {
                 )}
                 h
               </Text>
-
-              <Text
-                style={
-                  styles.earningStatLabel
-                }
-              >
-                Hours
-              </Text>
             </View>
 
             <View
@@ -398,6 +414,14 @@ export default function ProfileScreen() {
                 styles.earningStat
               }
             >
+              <Text
+                style={
+                  styles.earningStatLabel
+                }
+              >
+                JOBS
+              </Text>
+
               <Text
                 style={
                   styles.earningStatValue
@@ -405,14 +429,6 @@ export default function ProfileScreen() {
               >
                 {jobStats.completed}
               </Text>
-
-              <Text
-                style={
-                  styles.earningStatLabel
-                }
-              >
-                Jobs
-              </Text>
             </View>
 
             <View
@@ -422,19 +438,19 @@ export default function ProfileScreen() {
             >
               <Text
                 style={
+                  styles.earningStatLabel
+                }
+              >
+                £/HR AVG
+              </Text>
+
+              <Text
+                style={
                   styles.earningStatValue
                 }
               >
                 {monthly.averagePayRate ||
                   0}
-              </Text>
-
-              <Text
-                style={
-                  styles.earningStatLabel
-                }
-              >
-                £/hr avg
               </Text>
             </View>
           </View>
@@ -766,12 +782,25 @@ const styles =
       color: "#FFFFFF",
     },
 
+    earningsBadgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      marginTop: 8,
+    },
+
+    earningsBadgeText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: "#6EE7B7",
+    },
+
     zapIcon: {
-      width: 42,
-      height: 42,
+      width: 38,
+      height: 38,
       borderRadius: 12,
       backgroundColor:
-        "rgba(255,255,255,0.10)",
+        "rgba(255,255,255,0.12)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -779,28 +808,29 @@ const styles =
     earningsStats: {
       flexDirection: "row",
       gap: 10,
+      marginTop: 18,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: "rgba(255,255,255,0.12)",
     },
 
     earningStat: {
       flex: 1,
-      backgroundColor:
-        "rgba(255,255,255,0.10)",
-      borderRadius: 12,
-      paddingVertical: 10,
-      alignItems: "center",
     },
 
     earningStatValue: {
-      fontSize: 16,
+      marginTop: 3,
+      fontSize: 15,
       fontWeight: "800",
       color: "#FFFFFF",
     },
 
     earningStatLabel: {
-      marginTop: 3,
-      fontSize: 10,
+      fontSize: 9,
+      fontWeight: "700",
+      letterSpacing: 0.5,
       color:
-        "rgba(255,255,255,0.45)",
+        "rgba(255,255,255,0.4)",
     },
 
     statsScroll: {
