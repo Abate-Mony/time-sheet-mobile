@@ -10,6 +10,9 @@ import { ActivityIndicator, AppState, Modal, Platform, Pressable, StyleSheet, Te
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { SuspendedOverlay } from "../components/SuspendedOverlay";
+import { useMyRestriction } from "../hooks/useMyRestriction";
+import { isSuspended } from "../utils/restriction";
 import {
   reconcileActiveJobNotification,
   updateActiveJobNotification,
@@ -141,6 +144,18 @@ function ActiveJobNotificationManager() {
 // folded into that one. Shares the same ["active-job"] query, so this
 // adds no extra network subscription — just another consumer of the same
 // cached result reacting to the same clock-in/out/cancellation/focus events.
+// A fully suspended worker (accessLevel "none") gets a full-screen takeover
+// above everything else in the app — same Modal-overlay approach as
+// AppLockOverlay below, chosen for the same reason: a plain sibling View
+// doesn't reliably sit above expo-router's <Stack> on iOS. Renders nothing
+// for no restriction, a lifted/expired one, or read_only/limited (those get
+// the dismissible banner in (tabs)/_layout.tsx instead).
+function SuspendedAccountManager() {
+  const { data: restriction } = useMyRestriction();
+  if (!restriction || !isSuspended(restriction)) return null;
+  return <SuspendedOverlay restriction={restriction} />;
+}
+
 function ShiftEndAlertManager() {
   const { data } = useQuery(activeWorkerJob());
   const job = (data && "job" in data ? data.job : null) as ActiveJobNotificationJob | null;
@@ -320,6 +335,7 @@ function RootNavigator() {
       {authenticated && <OfflineSyncManager />}
       {authenticated && Platform.OS === "android" && <ActiveJobNotificationManager />}
       {authenticated && <ShiftEndAlertManager />}
+      {authenticated && <SuspendedAccountManager />}
       {authenticated && (
         <AppLockOverlay locked={lockGate.locked} onUnlocked={() => lockGate.setLocked(false)} />
       )}

@@ -20,6 +20,27 @@ import type {
   User,
   WorkerDocument,
 } from "./types";
+import type { AccountRestriction } from "./restriction";
+
+// GET /restrictions/me and POST /restrictions/me/appeal stay reachable at
+// every access level (see restrictionMiddleware.ts's own note) — this is
+// the way back for a fully suspended worker, so it's never gated.
+export const getMyRestriction = async (): Promise<AccountRestriction | null> => {
+  const { data } = await customFetch.get<{ restriction: AccountRestriction | null }>("/restrictions/me");
+  return data.restriction;
+};
+
+export const submitRestrictionAppeal = async (message: string): Promise<boolean> => {
+  try {
+    await customFetch.post("/restrictions/me/appeal", { message });
+    Toast.show({ type: "success", text1: "Appeal submitted" });
+    queryClient.invalidateQueries({ queryKey: ["my-restriction"] });
+    return true;
+  } catch (err) {
+    Toast.show({ type: "error", text1: isAxiosError(err) ? err.response?.data?.msg ?? "Couldn't submit appeal" : "Couldn't submit appeal" });
+    return false;
+  }
+};
 
 // GET /companies/plan is not role-restricted server-side (only
 // authenticateUser/loadRestriction at the router level), so a worker can

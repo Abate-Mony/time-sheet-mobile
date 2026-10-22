@@ -9,6 +9,9 @@ import {
 } from "lucide-react-native"
 import { Platform, Text, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { RestrictionBanner } from "@/components/RestrictionBanner"
+import { useMyRestriction } from "@/hooks/useMyRestriction"
+import { isRestricted } from "@/utils/restriction"
 
 const ACTIVE = "#1E3A5F"
 const INACTIVE = "#94A3B8"
@@ -33,11 +36,11 @@ function TabIcon({
             justifyContent: "center",
             gap: 3,
             width: "auto",
-            marginBottom: ACTIVE ? 10 : 0,
+            marginBottom: 10,
             // backgroundColor: "#fff",
             borderRadius: 999,
             padding: 10,
-            marginTop: focused ? -20 : 0,
+            marginTop: focused ? -25 : 0,
             backgroundColor: "#FFFFFF",
 
 
@@ -49,8 +52,8 @@ function TabIcon({
     >
       <View
         style={{
-          width: 36,
-          height: 36,
+          width: focused ? 36 : 30,
+          height: focused ? 36 : 30,
           borderRadius: 9999,
           alignItems: "center",
           justifyContent: "center",
@@ -67,12 +70,12 @@ function TabIcon({
             : {}),
         }}
       >
-        <Icon size={17} color={focused ? "#FFFFFF" : INACTIVE} />
+        <Icon size={Platform.OS === "ios" ?  18 : 20} color={focused ? "#FFFFFF" : INACTIVE} />
       </View>
 
       <Text
         style={{
-          fontSize: 8,
+          fontSize: Platform.OS === "ios" ?  8 : 10,
           fontWeight: "600",
           color: focused ? ACTIVE : INACTIVE,
           textTransform: "lowercase",
@@ -115,6 +118,7 @@ function popToTopOnTabPress(tabName: string) {
 export default function TabLayout() {
   const { width: screenWidth } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  const { data: restriction } = useMyRestriction()
 
   // Responsive width, with at least 16px on either side.
   const tabBarWidth = Math.min(screenWidth - 32, 400)
@@ -124,6 +128,11 @@ export default function TabLayout() {
   const bottomGap = Math.max(insets.bottom, 16)
   const BOTTOM_PADDING = 100
   return (
+    <View style={{ flex: 1 }}>
+      {/* Only read_only/limited ever render here — a "none" restriction
+          shows the full-screen SuspendedOverlay (app/_layout.tsx) instead,
+          which sits above this entire tab tree. */}
+      {restriction && isRestricted(restriction) && <RestrictionBanner restriction={restriction} />}
 
     <Tabs
       screenOptions={{
@@ -156,7 +165,7 @@ export default function TabLayout() {
           // borderRadius: 60,
           margin: "auto",
           marginBottom: 0,
-          paddingBottom: Platform.OS == "android" ? BOTTOM_PADDING-20 : BOTTOM_PADDING
+          paddingBottom: Platform.OS == "android" ? BOTTOM_PADDING - 20 : BOTTOM_PADDING
           // marginLeft: sideGap
         },
       }}
@@ -212,5 +221,6 @@ export default function TabLayout() {
         listeners={popToTopOnTabPress("profile")}
       />
     </Tabs>
+    </View>
   )
 }
