@@ -528,3 +528,51 @@ export interface MyAvailability {
   isSet: boolean
   updatedAt: string | null
 }
+
+// ── Contacts (GET /workers/me/contacts) ──────────────────────────────────────
+
+export interface ManagerContact {
+  _id: string
+  fullname: string
+  role: "manager" | "admin" | "owner"
+  email: string | null
+  phone: string | null
+  photoUrl: string | null
+}
+
+export interface MyContactsResponse {
+  company: {
+    name: string
+    phone: string | null
+    website: string | null
+    logoUrl: string | null
+  }
+  managers: ManagerContact[]
+}
+
+// ── Team directory (GET /workers/me/team) ────────────────────────────────────
+
+export interface TeamMate {
+  _id: string
+  fullname: string
+  role: "owner" | "admin" | "manager" | "worker"
+  photoUrl: string | null
+}
+
+export interface MyTeamResponse {
+  teammates: TeamMate[]
+}
+
+// ── Work locations (GET /workers/me/locations) ───────────────────────────────
+
+export interface WorkLocation {
+  location: string
+  address: string | null
+  coordinates: { lat: number; lng: number } | null
+  lastWorkedAt: string
+  visitCount: number
+}
+
+export interface MyLocationsResponse {
+  locations: WorkLocation[]
+}

@@ -20,6 +20,9 @@ export default function ProfileStackLayout() {
       <Stack.Screen name="help" />
       <Stack.Screen name="earnings" />
       <Stack.Screen name="availability" />
+      <Stack.Screen name="work-hub" />
+      <Stack.Screen name="team" />
+      <Stack.Screen name="locations" />
     </Stack>
   )
 }

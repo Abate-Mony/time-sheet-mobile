@@ -11,6 +11,7 @@ import {
   CircleDollarSign,
   Download,
   HelpCircle,
+  LayoutGrid,
   LogOut,
   Paperclip,
   Phone,
@@ -208,6 +209,13 @@ export default function ProfileScreen() {
   ];
 
   const settings = [
+    {
+      label: "Work Hub",
+      icon: LayoutGrid,
+      sub: "Messages, documents, pay and more",
+      to: "/(tabs)/profile/work-hub",
+    },
+
     {
       label: "Earnings",
       icon: CircleDollarSign,
