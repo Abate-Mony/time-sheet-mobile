@@ -1,20 +1,21 @@
+import { workerDashboardstats } from "@/app/(tabs)/profile";
+import { Avatar } from "@/components/avatar";
+import { useAuth } from "@/context/AuthContext";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { openJob } from "@/utils/openJob";
-import { workerDashboardstats } from "@/app/(tabs)/profile"
-import { useAuth } from "@/context/AuthContext"
-import { useUnreadNotificationCount } from "@/hooks/useNotifications"
-import { useTabBarClearance } from "@/hooks/useTabBarClearance"
-import { useQuery } from "@tanstack/react-query"
-import dayjs from "dayjs"
-import isoWeek from "dayjs/plugin/isoWeek"
-import utc from "dayjs/plugin/utc"
-import { useFocusEffect, useRouter } from "expo-router"
-import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Settings, Timer, Zap } from "lucide-react-native"
-import { useCallback, useMemo, useState } from "react"
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native"
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import customFetch from "../../utils/customFetch"
-import { formatDate } from "../../utils/date"
-import type { MyJobsResponse, WorkerJob } from "../../utils/types"
+import { useQuery } from "@tanstack/react-query";
+import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
+import utc from "dayjs/plugin/utc";
+import { useFocusEffect, useRouter } from "expo-router";
+import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Settings, Timer, Zap } from "lucide-react-native";
+import { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import customFetch from "../../utils/customFetch";
+import { formatDate } from "../../utils/date";
+import type { MyJobsResponse, WorkerJob } from "../../utils/types";
 const UPCOMING_SHIFTS_LIMIT = 5
 
 dayjs.extend(isoWeek)
@@ -166,24 +167,15 @@ export default function DashboardScreen() {
 
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "#1E3A5F",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700" }}>{initials || "U"}</Text>
+          <Pressable onPress={() => router.push("/(tabs)/profile")} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Avatar initials={initials || "U"} src={user?.profilePhoto?.url} size="md" />
+              <View>
+                <Text style={{ fontSize: 12, color: "#94A3B8", fontWeight: "500" }}>{greeting}</Text>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F172A" }}>{firstName}</Text>
+              </View>
             </View>
-            <View>
-              <Text style={{ fontSize: 12, color: "#94A3B8", fontWeight: "500" }}>{greeting}</Text>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F172A" }}>{firstName}</Text>
-            </View>
-          </View>
+          </Pressable>
           <View style={{
             flex: 0,
             display: "flex",
