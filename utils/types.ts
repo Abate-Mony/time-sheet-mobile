@@ -446,6 +446,22 @@ export interface NotificationsPage {
   unreadCount: number
 }
 
+// ── Overtime (GET /workers/me/overtime) ───────────────────────────────────────
+
+export type OvertimeStatus = "pending" | "approved" | "rejected"
+
+export interface OvertimeItem {
+  assignmentId: string
+  job: { _id: string; title: string; date: string; location: string }
+  actualMinutes: number
+  approvedMinutes: number
+  overtimeMinutes: number
+  overtimeStatus: OvertimeStatus
+  overtimeReviewedAt: string | null
+  managerNotes: string | null
+  checkedOutAt: string | null
+}
+
 // ── Earnings (GET /workers/me/earnings) ──────────────────────────────────────
 
 export type EarningsPeriod = "week" | "month"

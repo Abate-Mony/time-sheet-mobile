@@ -184,13 +184,14 @@ export default function EarningsScreen() {
               <EarningsHero data={data} />
               <PayBreakdown earned={data.earned} />
               {data.pendingOvertimeAmount > 0 && (
-                <View style={styles.pendingBanner}>
+                <Pressable style={styles.pendingBanner} onPress={() => router.push('/(tabs)/profile/overtime')}>
                   <Clock size={16} color="#B45309" style={{ marginTop: 1 }} />
                   <View style={styles.flex1}>
                     <Text style={styles.pendingTitle}>{money(data.pendingOvertimeAmount)} pending approval</Text>
                     <Text style={styles.pendingText}>Overtime awaiting your manager&apos;s review isn&apos;t included in the total above.</Text>
                   </View>
-                </View>
+                  <ChevronRight size={16} color="#B45309" />
+                </Pressable>
               )}
               <Pressable style={styles.timesheetButton} onPress={() => router.push('/(tabs)/profile/download-time-sheet')}>
                 <FileText size={15} color="#FFFFFF" />

@@ -224,6 +224,13 @@ export default function ProfileScreen() {
     },
 
     {
+      label: "Overtime",
+      icon: Clock,
+      sub: "Pending, approved, and rejected",
+      to: "/(tabs)/profile/overtime",
+    },
+
+    {
       label: "Download Timesheet",
       icon: Download,
       sub: "July 2025",

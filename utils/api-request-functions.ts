@@ -12,6 +12,8 @@ import type {
   MyAvailability,
   NotificationPreferences,
   OpenShiftClaim,
+  OvertimeItem,
+  OvertimeStatus,
   SingleJobResponse,
   TimeOffRequest,
   TimeOffType,
@@ -307,6 +309,13 @@ export const requestTimeOff = async (params: {
 export const getMyTimeOffRequests = async (): Promise<TimeOffRequest[]> => {
   const { data } = await customFetch.get<{ requests: TimeOffRequest[] }>("/time-off/me");
   return data.requests;
+};
+
+export const getMyOvertime = async (status?: OvertimeStatus | "all"): Promise<OvertimeItem[]> => {
+  const { data } = await customFetch.get<{ items: OvertimeItem[] }>("/workers/me/overtime", {
+    params: status && status !== "all" ? { status } : undefined,
+  });
+  return data.items;
 };
 
 export const getMyAvailability = async (): Promise<MyAvailability> => {
