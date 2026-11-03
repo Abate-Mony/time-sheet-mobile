@@ -428,6 +428,41 @@ export const cancelShiftGiveaway = async (jobId: string, assignmentId: string): 
   }
 };
 
+// Self-reports hours for a shift the backend's markMissedShifts cron
+// already flagged as missed (never clocked in at all). Still needs a
+// manager's approve/decline before any time lands on the assignment — see
+// reviewMissedShiftRequest on work.wk's side.
+export const requestMissedShiftReview = async (
+  jobId: string,
+  assignmentId: string,
+  input: { startTime: string; endTime: string; reason: string; note?: string }
+): Promise<boolean> => {
+  try {
+    await customFetch.post(`/workers/assignments/${assignmentId}/missed-shift-request`, input);
+    showSuccess("Review requested");
+    await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
+// Pulls back a pending request before a manager looks at it — goes back
+// to "none" so the worker can resubmit, still bound by the original
+// missedShiftReviewDeadline.
+export const withdrawMissedShiftRequest = async (jobId: string, assignmentId: string): Promise<boolean> => {
+  try {
+    await customFetch.delete(`/workers/assignments/${assignmentId}/missed-shift-request`);
+    showSuccess("Request withdrawn");
+    await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    return true;
+  } catch (err) {
+    showError(getApiErrorMessage(err));
+    return false;
+  }
+};
+
 export const getMyClaims = async (): Promise<OpenShiftClaim[]> => {
   const { data } = await customFetch.get<{ claims: OpenShiftClaim[] }>("/workers/claims");
   return data.claims;

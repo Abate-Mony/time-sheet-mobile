@@ -290,6 +290,9 @@ export interface JobAssignment {
   managerNotes: string
   hoursWorked: number
   overtimeHours: number
+  // Set once a missed-shift request is approved (reviewMissedShiftRequest
+  // synthesizes these, same as a normal clock-out) — null/absent otherwise.
+  approvedMinutes?: number | null
   payRate: number
   totalPay: number
   pendingApproval?: boolean
@@ -300,7 +303,32 @@ export interface JobAssignment {
   giveawayTakenBy?: string | null
   createdAt: string
   updatedAt: string
+
+  // ── Missed shift review ──────────────────────────────────────────────
+  // Set by the backend's markMissedShifts cron once the job's scheduled
+  // end has passed with no checkedInAt at all — status stays "accepted",
+  // this is what actually says the shift was missed. The worker then has
+  // until missedShiftReviewDeadline to self-report via
+  // requestMissedShiftReview/withdrawMissedShiftRequest below.
+  missedShiftDetectedAt?: string | null
+  missedShiftReviewDeadline?: string | null
+  missedShiftReviewStatus?: MissedShiftReviewStatus
+  missedShiftRequestedStartTime?: string
+  missedShiftRequestedEndTime?: string
+  missedShiftReason?: MissedShiftReason
+  missedShiftNote?: string
+  missedShiftRequestedAt?: string
+  // Populated by getJob on the backend — an object once reviewed, absent
+  // until then.
+  missedShiftReviewedBy?: { _id: string; fullname: string } | null
+  missedShiftReviewedAt?: string
+  missedShiftReviewNote?: string
+  missedShiftApprovedStartTime?: string
+  missedShiftApprovedEndTime?: string
 }
+
+export type MissedShiftReviewStatus = "none" | "pending" | "approved" | "declined"
+export type MissedShiftReason = "phone_died" | "no_signal" | "forgot_to_clock_in" | "other"
 
 // ── What /workers (getMyJobs) actually returns ────────────────────────────────
 // Job fields, but `status` is overridden by the assignment status,

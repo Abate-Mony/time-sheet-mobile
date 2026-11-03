@@ -6,7 +6,9 @@ import {
   cancelShiftGiveaway,
   changeWorkerJobStaus,
   offerShiftGiveaway,
+  requestMissedShiftReview,
   toggleChecklistItem,
+  withdrawMissedShiftRequest,
   withdrawOpenShiftClaim,
 } from "@/utils/api-request-functions";
 import customFetch from "@/utils/customFetch";
@@ -31,6 +33,7 @@ import {
   Navigation,
   Paperclip,
   RefreshCw,
+  Send,
   Timer,
   X,
 } from "lucide-react-native";
@@ -140,6 +143,332 @@ function ReasonSheet({
   );
 }
 
+const MISSED_SHIFT_REASON_LABELS: Record<string, string> = {
+  phone_died: "Phone died",
+  no_signal: "No signal",
+  forgot_to_clock_in: "Forgot to clock in",
+  other: "Other",
+};
+
+// The "Request a review" bottom sheet — for a shift the backend's
+// markMissedShifts cron already flagged as missed (no clock-in at all).
+// Defaults start/end to the job's scheduled window, same as the design.
+function MissedShiftRequestModal({
+  visible,
+  job,
+  loading,
+  onCancel,
+  onSubmit,
+}: {
+  visible: boolean;
+  job: { title: string; startTime: string; endTime: string } | null;
+  loading: boolean;
+  onCancel: () => void;
+  onSubmit: (input: { startTime: string; endTime: string; reason: string; note?: string }) => void;
+}) {
+  const [startTime, setStartTime] = useState(job?.startTime ?? "");
+  const [endTime, setEndTime] = useState(job?.endTime ?? "");
+  const [reason, setReason] = useState("phone_died");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (visible) {
+      setStartTime(job?.startTime ?? "");
+      setEndTime(job?.endTime ?? "");
+      setReason("phone_died");
+      setNote("");
+    }
+  }, [visible, job?.startTime, job?.endTime]);
+
+  if (!job) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalSheet}>
+          <Text style={styles.modalTitle}>Request a review</Text>
+          <Text style={styles.modalSubtitle}>
+            {job.title} · scheduled {job.startTime}–{job.endTime}. Your manager will confirm the hours.
+          </Text>
+
+          <View style={styles.missedShiftTimeRow}>
+            <View style={styles.missedShiftTimeField}>
+              <Text style={styles.modalLabel}>Started</Text>
+              <TextInput
+                value={startTime}
+                onChangeText={setStartTime}
+                placeholder="HH:mm"
+                placeholderTextColor="#94A3B8"
+                style={styles.missedShiftTimeInput}
+                editable={!loading}
+              />
+            </View>
+            <View style={styles.missedShiftTimeField}>
+              <Text style={styles.modalLabel}>Finished</Text>
+              <TextInput
+                value={endTime}
+                onChangeText={setEndTime}
+                placeholder="HH:mm"
+                placeholderTextColor="#94A3B8"
+                style={styles.missedShiftTimeInput}
+                editable={!loading}
+              />
+            </View>
+          </View>
+          <Text style={styles.missedShiftHint}>Must be within {job.startTime}–{job.endTime}</Text>
+
+          <Text style={[styles.modalLabel, { marginTop: 14 }]}>What happened?</Text>
+          <View style={styles.missedShiftReasonRow}>
+            {Object.entries(MISSED_SHIFT_REASON_LABELS).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setReason(value)}
+                disabled={loading}
+                style={[styles.missedShiftChip, reason === value && styles.missedShiftChipActive]}
+              >
+                <Text style={[styles.missedShiftChipText, reason === value && styles.missedShiftChipTextActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.modalLabel}>
+            Note <Text style={styles.modalLabelOptional}>(optional)</Text>
+          </Text>
+          <TextInput
+            value={note}
+            onChangeText={t => setNote(t.slice(0, 1000))}
+            placeholder="Anything your manager should know"
+            placeholderTextColor="#94A3B8"
+            multiline
+            numberOfLines={3}
+            style={styles.modalTextarea}
+            editable={!loading}
+          />
+
+          <View style={styles.modalActions}>
+            <Pressable style={[styles.modalKeepButton, loading && styles.disabled]} disabled={loading} onPress={onCancel}>
+              <Text style={styles.modalKeepButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.modalConfirmButton, { backgroundColor: "#1E3A5F" }, (loading || !startTime || !endTime) && styles.disabled]}
+              disabled={loading || !startTime || !endTime}
+              onPress={() => onSubmit({ startTime, endTime, reason, note: note.trim() || undefined })}
+            >
+              {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.modalConfirmButtonText}>Submit request</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// Computes and renders whichever of the 5 missed-shift states applies right
+// now (Main/Pending/Approved/Declined/Closed) — a pure function of
+// assignment fields + the current time, not separate screens, since a
+// resubmission or a deadline passing needs to flip the card in place
+// without navigating anywhere.
+function MissedShiftCard({
+  job,
+  assignment,
+  onRequestReview,
+  onWithdraw,
+  withdrawing,
+}: {
+  job: { title: string };
+  assignment: NonNullable<SingleJobResponse["job"]["workerJobDetails"]>;
+  onRequestReview: () => void;
+  onWithdraw: () => void;
+  withdrawing: boolean;
+}) {
+  const reviewStatus = assignment.missedShiftReviewStatus ?? "none";
+  const deadline = assignment.missedShiftReviewDeadline ? new Date(assignment.missedShiftReviewDeadline) : null;
+  const isClosed = !!deadline && new Date() > deadline && reviewStatus !== "approved";
+
+  if (reviewStatus === "approved") {
+    const approvedStart = assignment.missedShiftApprovedStartTime;
+    const approvedEnd = assignment.missedShiftApprovedEndTime;
+    const requestedStart = assignment.missedShiftRequestedStartTime;
+    const requestedEnd = assignment.missedShiftRequestedEndTime;
+    const timesChanged = approvedStart !== requestedStart || approvedEnd !== requestedEnd;
+    return (
+      <View style={[styles.missedShiftCard, { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" }]}>
+        <View style={styles.missedShiftCardHeader}>
+          <View style={[styles.missedShiftCardIcon, { backgroundColor: "#D1FAE5" }]}>
+            <CheckCircle2 size={18} color="#065F46" />
+          </View>
+          <View style={styles.missedShiftCardHeaderText}>
+            <Text style={[styles.missedShiftCardTitle, { color: "#065F46" }]}>
+              Hours approved{assignment.approvedMinutes != null ? ` · ${formatDuration(assignment.approvedMinutes)} recorded` : ""}
+            </Text>
+            <Text style={[styles.missedShiftCardBody, { color: "#065F46" }]}>
+              {timesChanged ? "Your manager changed the time. " : ""}These hours are now on your timesheet.
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.missedShiftDl, { borderColor: "#A7F3D0" }]}>
+          {timesChanged && (
+            <View style={[styles.missedShiftDlRow, { borderColor: "#D1FAE5" }]}>
+              <Text style={styles.missedShiftDlLabel}>You asked for</Text>
+              <Text style={[styles.missedShiftDlValue, styles.missedShiftDlStrike]}>{requestedStart}–{requestedEnd}</Text>
+            </View>
+          )}
+          <View style={[styles.missedShiftDlRow, { borderColor: "#D1FAE5" }]}>
+            <Text style={styles.missedShiftDlLabel}>Approved</Text>
+            <Text style={styles.missedShiftDlValue}>{approvedStart}–{approvedEnd}</Text>
+          </View>
+          {!!assignment.missedShiftReviewedBy && (
+            <View style={styles.missedShiftDlRow}>
+              <Text style={styles.missedShiftDlLabel}>By</Text>
+              <Text style={styles.missedShiftDlValue}>
+                {assignment.missedShiftReviewedBy.fullname}
+                {assignment.missedShiftReviewedAt ? ` · ${formatDate(assignment.missedShiftReviewedAt, "ddd D MMM, HH:mm")}` : ""}
+              </Text>
+            </View>
+          )}
+        </View>
+        {!!assignment.missedShiftReviewNote && (
+          <Text style={[styles.missedShiftCardBody, { color: "#065F46" }]}>
+            <Text style={{ fontWeight: "700" }}>Manager note: </Text>{assignment.missedShiftReviewNote}
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  if (reviewStatus === "pending") {
+    return (
+      <View style={[styles.missedShiftCard, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+        <View style={styles.missedShiftCardHeader}>
+          <View style={[styles.missedShiftCardIcon, { backgroundColor: "#FEF3C7" }]}>
+            <Clock size={18} color="#92400E" />
+          </View>
+          <View style={styles.missedShiftCardHeaderText}>
+            <Text style={[styles.missedShiftCardTitle, { color: "#92400E" }]}>Review requested</Text>
+            <Text style={[styles.missedShiftCardBody, { color: "#92400E" }]}>
+              Waiting for your manager. You&apos;ll get a notification when they decide.
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.missedShiftDl, { borderColor: "#FDE68A" }]}>
+          <View style={[styles.missedShiftDlRow, { borderColor: "#FEF3C7" }]}>
+            <Text style={styles.missedShiftDlLabel}>Hours</Text>
+            <Text style={styles.missedShiftDlValue}>
+              {assignment.missedShiftRequestedStartTime}–{assignment.missedShiftRequestedEndTime}
+            </Text>
+          </View>
+          <View style={[styles.missedShiftDlRow, { borderColor: "#FEF3C7" }]}>
+            <Text style={styles.missedShiftDlLabel}>Reason</Text>
+            <Text style={styles.missedShiftDlValue}>
+              {MISSED_SHIFT_REASON_LABELS[assignment.missedShiftReason ?? ""] ?? assignment.missedShiftReason}
+            </Text>
+          </View>
+          {!!assignment.missedShiftRequestedAt && (
+            <View style={styles.missedShiftDlRow}>
+              <Text style={styles.missedShiftDlLabel}>Sent</Text>
+              <Text style={styles.missedShiftDlValue}>{formatDate(assignment.missedShiftRequestedAt, "ddd D MMM, HH:mm")}</Text>
+            </View>
+          )}
+        </View>
+        <Pressable
+          style={[styles.missedShiftOutlineBtn, { borderColor: "#FDE68A" }, withdrawing && styles.disabled]}
+          disabled={withdrawing}
+          onPress={onWithdraw}
+        >
+          {withdrawing
+            ? <ActivityIndicator size="small" color="#92400E" />
+            : <Text style={[styles.missedShiftOutlineBtnText, { color: "#92400E" }]}>Withdraw request</Text>}
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (isClosed) {
+    return (
+      <View style={[styles.missedShiftCard, { backgroundColor: "#FFFFFF", borderColor: "#E2E8F0" }]}>
+        <View style={styles.missedShiftCardHeader}>
+          <View style={[styles.missedShiftCardIcon, { backgroundColor: "#F1F5F9" }]}>
+            <AlertTriangle size={18} color="#475569" />
+          </View>
+          <View style={styles.missedShiftCardHeaderText}>
+            <Text style={styles.missedShiftCardTitle}>Review window closed</Text>
+            <Text style={[styles.missedShiftCardBody, { color: "#475569" }]}>
+              {deadline ? `Requests for this shift closed on ${formatDate(deadline, "ddd D MMM, HH:mm")} (48 hours after it ended). ` : ""}
+              Contact your manager if you still need it reviewed.
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (reviewStatus === "declined") {
+    return (
+      <View style={[styles.missedShiftCard, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
+        <View style={styles.missedShiftCardHeader}>
+          <View style={[styles.missedShiftCardIcon, { backgroundColor: "#FEE2E2" }]}>
+            <X size={18} color="#991B1B" />
+          </View>
+          <View style={styles.missedShiftCardHeaderText}>
+            <Text style={[styles.missedShiftCardTitle, { color: "#991B1B" }]}>Request declined</Text>
+            <Text style={[styles.missedShiftCardBody, { color: "#991B1B" }]}>No hours were recorded for this shift.</Text>
+          </View>
+        </View>
+        {!!assignment.missedShiftReviewNote && (
+          <View style={styles.missedShiftNoteBox}>
+            <Text style={styles.missedShiftNoteBoxLabel}>
+              MANAGER NOTE{assignment.missedShiftReviewedBy ? ` · ${assignment.missedShiftReviewedBy.fullname.toUpperCase()}` : ""}
+            </Text>
+            <Text style={styles.missedShiftNoteBoxText}>{assignment.missedShiftReviewNote}</Text>
+          </View>
+        )}
+        <Pressable style={[styles.missedShiftPrimaryBtn, { backgroundColor: "#1E3A5F" }]} onPress={onRequestReview}>
+          <Text style={styles.missedShiftPrimaryBtnText}>Send a new request</Text>
+        </Pressable>
+        {!!deadline && (
+          <View style={styles.missedShiftDeadlineRow}>
+            <Clock size={13} color="#991B1B" />
+            <Text style={[styles.missedShiftDeadlineText, { color: "#991B1B" }]}>
+              You can resend until {formatDate(deadline, "ddd D MMM, HH:mm")}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // "none" — the default state right after the shift gets flagged, no
+  // request submitted yet.
+  return (
+    <>
+      <View style={styles.missedShiftBanner}>
+        <AlertTriangle size={14} color="#B91C1C" />
+        <Text style={styles.missedShiftBannerText}>Shift window missed</Text>
+      </View>
+      <View style={[styles.missedShiftCard, { backgroundColor: "#FFFFFF", borderColor: "#E2E8F0" }]}>
+        <Text style={styles.missedShiftCardTitle}>Worked this shift but couldn&apos;t clock in?</Text>
+        <Text style={[styles.missedShiftCardBody, { color: "#475569" }]}>
+          Send your hours to your manager. Nothing is paid until they approve it.
+        </Text>
+        <Pressable style={[styles.missedShiftPrimaryBtn, { backgroundColor: "#1E3A5F" }]} onPress={onRequestReview}>
+          <Send size={16} color="#FFFFFF" />
+          <Text style={styles.missedShiftPrimaryBtnText}>Request review</Text>
+        </Pressable>
+        {!!deadline && (
+          <View style={styles.missedShiftDeadlineBox}>
+            <Clock size={14} color="#92400E" />
+            <Text style={styles.missedShiftDeadlineBoxText}>
+              Request by <Text style={{ fontWeight: "700" }}>{formatDate(deadline, "ddd D MMM, HH:mm")}</Text>
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -246,6 +575,29 @@ export default function JobDetailScreen() {
   const assignment = job?.workerJobDetails;
   const isOffered = !!assignment?.giveawayOfferedAt;
 
+  // Missed shift (never clocked in at all) — see markMissedShifts.ts on
+  // the backend. missedShiftDetectedAt being set is the actual signal;
+  // job.status stays "accepted" the whole time, nothing else moves it.
+  const isMissedShift = !!assignment?.missedShiftDetectedAt && assignment.missedShiftReviewStatus !== "approved";
+  const [showMissedShiftRequest, setShowMissedShiftRequest] = useState(false);
+  const [isSubmittingMissedShift, setIsSubmittingMissedShift] = useState(false);
+  const [isWithdrawingMissedShift, setIsWithdrawingMissedShift] = useState(false);
+
+  const submitMissedShiftRequest = async (input: { startTime: string; endTime: string; reason: string; note?: string }) => {
+    if (!id || !assignment) return;
+    setIsSubmittingMissedShift(true);
+    const ok = await requestMissedShiftReview(id, assignment._id, input);
+    setIsSubmittingMissedShift(false);
+    if (ok) setShowMissedShiftRequest(false);
+  };
+
+  const withdrawMissedShift = async () => {
+    if (!id || !assignment) return;
+    setIsWithdrawingMissedShift(true);
+    await withdrawMissedShiftRequest(id, assignment._id);
+    setIsWithdrawingMissedShift(false);
+  };
+
   const confirmOffer = async () => {
     if (!id || !assignment) return;
     setIsOffering(true);
@@ -325,6 +677,15 @@ export default function JobDetailScreen() {
     if (directionsHref) Linking.openURL(directionsHref);
   };
 
+  // A missed shift overrides the normal status badge — the assignment's
+  // own `status` never actually moves off "accepted" for this case (see
+  // markMissedShifts.ts), so the badge has to be driven by the
+  // missed-shift fields instead, independent of statusStyle below.
+  const missedShiftBadge =
+    assignment?.missedShiftReviewStatus === "pending" ? { label: "In review", bg: "#FEF3C7", text: "#92400E" } :
+      isMissedShift ? { label: "Missed", bg: "#FEE2E2", text: "#B91C1C" } :
+        null;
+
   const statusStyle =
     STATUS_STYLES[(job?.status as keyof typeof STATUS_STYLES) ?? "pending"] ??
     STATUS_STYLES.pending;
@@ -365,9 +726,9 @@ export default function JobDetailScreen() {
                   <Text style={styles.heroTitle}>{job.title}</Text>
                 </View>
 
-                <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                  <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>
-                    {job.status}
+                <View style={[styles.statusBadge, { backgroundColor: missedShiftBadge?.bg ?? statusStyle.bg }]}>
+                  <Text style={[styles.statusBadgeText, { color: missedShiftBadge?.text ?? statusStyle.text }]}>
+                    {missedShiftBadge?.label ?? job.status}
                   </Text>
                 </View>
               </View>
@@ -415,6 +776,16 @@ export default function JobDetailScreen() {
               })}
             </View>
           </View>
+
+          {!!assignment?.missedShiftDetectedAt && (
+            <MissedShiftCard
+              job={job}
+              assignment={assignment}
+              onRequestReview={() => setShowMissedShiftRequest(true)}
+              onWithdraw={withdrawMissedShift}
+              withdrawing={isWithdrawingMissedShift}
+            />
+          )}
 
           {!!job.description && (
             <View style={styles.noteCard}>
@@ -765,6 +1136,14 @@ export default function JobDetailScreen() {
             onCancel={() => setShowOfferModal(false)}
             onConfirm={confirmOffer}
           />
+
+          <MissedShiftRequestModal
+            visible={showMissedShiftRequest}
+            job={job}
+            loading={isSubmittingMissedShift}
+            onCancel={() => setShowMissedShiftRequest(false)}
+            onSubmit={submitMissedShiftRequest}
+          />
         </>
       )}
     </SafeAreaView>
@@ -921,4 +1300,64 @@ const styles = StyleSheet.create({
   modalKeepButtonText: { fontSize: 13, fontWeight: "700", color: "#0F172A" },
   modalConfirmButton: { flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   modalConfirmButtonText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+
+  // ── Missed shift ──────────────────────────────────────────────────────
+  missedShiftBanner: {
+    height: 46, borderRadius: 12, backgroundColor: "#FEF2F2",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+  },
+  missedShiftBannerText: { color: "#B91C1C", fontSize: 13, fontWeight: "600" },
+  missedShiftCard: { padding: 16, borderRadius: 16, borderWidth: 1, gap: 12 },
+  missedShiftCardHeader: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  missedShiftCardIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  missedShiftCardHeaderText: { flex: 1, gap: 3 },
+  missedShiftCardTitle: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
+  missedShiftCardBody: { fontSize: 12, lineHeight: 17, color: "#0F172A" },
+  missedShiftDl: { backgroundColor: "#FFFFFF", borderWidth: 1, borderRadius: 12, paddingHorizontal: 12 },
+  missedShiftDlRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingVertical: 8, borderBottomWidth: 1,
+  },
+  missedShiftDlLabel: { fontSize: 13, color: "#64748B" },
+  missedShiftDlValue: { fontSize: 13, fontWeight: "700", color: "#0F172A" },
+  missedShiftDlStrike: { fontWeight: "600", color: "#64748B", textDecorationLine: "line-through" },
+  missedShiftOutlineBtn: {
+    height: 42, borderRadius: 12, borderWidth: 1, backgroundColor: "#FFFFFF",
+    alignItems: "center", justifyContent: "center",
+  },
+  missedShiftOutlineBtnText: { fontSize: 14, fontWeight: "700" },
+  missedShiftPrimaryBtn: {
+    height: 46, borderRadius: 12, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 8,
+  },
+  missedShiftPrimaryBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  missedShiftDeadlineBox: {
+    flexDirection: "row", alignItems: "center", gap: 6, fontSize: 12,
+    color: "#92400E", backgroundColor: "#FFFBEB", borderWidth: 1, borderColor: "#FDE68A",
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8,
+  },
+  missedShiftDeadlineBoxText: { fontSize: 12, color: "#92400E", flexShrink: 1 },
+  missedShiftDeadlineRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  missedShiftDeadlineText: { fontSize: 12 },
+  missedShiftNoteBox: {
+    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#FECACA", borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10, gap: 4,
+  },
+  missedShiftNoteBoxLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, color: "#64748B" },
+  missedShiftNoteBoxText: { fontSize: 13, lineHeight: 18, color: "#0F172A" },
+  missedShiftTimeRow: { flexDirection: "row", gap: 12, marginTop: 14 },
+  missedShiftTimeField: { flex: 1, gap: 6 },
+  missedShiftTimeInput: {
+    height: 46, borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12,
+    paddingHorizontal: 12, fontSize: 16, fontWeight: "700", color: "#0F172A", backgroundColor: "#F8FAFC",
+  },
+  missedShiftHint: { marginTop: -4, fontSize: 12, color: "#64748B" },
+  missedShiftReasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  missedShiftChip: {
+    height: 36, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1,
+    borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center",
+  },
+  missedShiftChipActive: { borderColor: "#1E3A5F", backgroundColor: "#1E3A5F" },
+  missedShiftChipText: { fontSize: 13, fontWeight: "600", color: "#334155" },
+  missedShiftChipTextActive: { color: "#FFFFFF" },
 });
