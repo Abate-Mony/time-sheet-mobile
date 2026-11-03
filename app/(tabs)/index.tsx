@@ -23,6 +23,10 @@ dayjs.extend(utc)
 
 const WEEKLY_TARGET_HOURS = 40
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"]
+// A shift the worker hasn't accepted yet (still "pending"), or one that was
+// declined/cancelled, isn't a real commitment — it must never count toward
+// "This Week"'s hours. Same set used by the web app's WorkerDashboard.tsx.
+const COMMITTED_ASSIGNMENT_STATUSES = ["accepted", "in-progress", "completed"]
 
 // job.date comes back from the API as a full ISO datetime string, not
 // YYYY-MM-DD — dayjs.utc(...) reads the date component as the backend
@@ -100,8 +104,8 @@ export default function DashboardScreen() {
     return Array.from({ length: 7 }, (_, i) => {
       const date = weekStart.add(i, "day")
       const dateStr = date.format("YYYY-MM-DD")
-      const dayJobs = jobs.filter(j => j.date === dateStr)
-      const hours = dayJobs.reduce((sum, j) => sum + (j.hours ?? 0), 0)
+      const dayJobs = jobs.filter(j => j.date === dateStr && COMMITTED_ASSIGNMENT_STATUSES.includes(j.status))
+      const hours = dayJobs.reduce((sum, j) => sum + (j.minutes ?? 0) / 60, 0)
       return {
         day: DAY_LETTERS[i],
         date: date.date(),
