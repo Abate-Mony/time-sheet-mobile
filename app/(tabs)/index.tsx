@@ -1,4 +1,5 @@
-import { workerDashboardstats } from "@/app/(tabs)/profile";
+import { workerDashboardstats } from "@/utils/workerDashboardStats";
+import { dashboardJobs } from "@/utils/dashboardJobs";
 import { Avatar } from "@/components/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadNotificationCount } from "@/hooks/useNotifications";
@@ -13,9 +14,7 @@ import { AlertCircle, Bell, Calendar, ChevronRight, Clock, MapPin, Settings, Tim
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import customFetch from "../../utils/customFetch";
-import { formatDate } from "../../utils/date";
-import type { MyJobsResponse, WorkerJob } from "../../utils/types";
+import { formatDate } from "@/utils/date";
 const UPCOMING_SHIFTS_LIMIT = 5
 
 dayjs.extend(isoWeek)
@@ -28,53 +27,33 @@ const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"]
 // "This Week"'s hours. Same set used by the web app's WorkerDashboard.tsx.
 const COMMITTED_ASSIGNMENT_STATUSES = ["accepted", "in-progress", "completed"]
 
-// job.date comes back from the API as a full ISO datetime string, not
-// YYYY-MM-DD — dayjs.utc(...) reads the date component as the backend
-// actually meant it (job.date is always normalised to UTC midnight). Same
-// fix applied to schedule.tsx and the web app's WorkerDashboard.tsx.
-function toDateKey(rawDate: string) {
-  return dayjs.utc(rawDate).format("YYYY-MM-DD")
-}
-
 export default function DashboardScreen() {
   const router = useRouter()
   const { user } = useAuth()
 
-  const [jobs, setJobs] = useState<WorkerJob[]>([])
-  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState("")
 
   const { data: stats, refetch: refetchStats } = useQuery(workerDashboardstats())
   const monthly = stats?.monthly
 
   const weekStart = useMemo(() => dayjs().startOf("isoWeek"), [])
+  const weekStartKey = weekStart.format("YYYY-MM-DD")
 
-  const load = useCallback(async () => {
-    try {
-      // Scoped from the start of this week forward instead of an unbounded
-      // fetch — a worker with 100+ older assignments could otherwise never
-      // see this week's or upcoming shifts, since the backend returns the
-      // oldest assignments first when unbounded. weekStart is always <=
-      // today by definition, and the 150 cap comfortably covers a week
-      // plus a healthy upcoming window (a real test worker had ~103
-      // assignments in an entire month).
-      const { data } = await customFetch.get<MyJobsResponse>("/workers", {
-        params: {
-          start: weekStart.format("YYYY-MM-DD"),
-          status: "all",
-          limit: 150,
-        },
-      })
-      setError("")
-      setJobs(data.jobs.map(j => ({ ...j, date: toDateKey(j.date) })))
-    } catch {
-      setError("Couldn't load your dashboard. Pull down to try again.")
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [weekStart])
+  // A React Query query (not local state) so Home works offline from the
+  // saved cache (lib/queryPersistence.ts persists "jobs" keys), and so it
+  // refreshes whenever anything invalidates ["jobs"] — clock in/out,
+  // accept, cancel, claim.
+  const {
+    data: jobs = [],
+    isLoading: loading,
+    isError,
+    refetch: refetchJobs,
+  } = useQuery(dashboardJobs(weekStartKey))
+
+  // With saved jobs on screen (e.g. offline), a failed refresh isn't worth
+  // an error banner — the offline banner already says the info is saved.
+  const error = isError && jobs.length === 0 ? "Couldn't load your dashboard. Pull down to try again." : ""
+  const load = refetchJobs
 
   // Covers both the initial mount (useFocusEffect fires on first focus too)
   // and every return to this tab — the tab navigator keeps this screen
@@ -92,9 +71,10 @@ export default function DashboardScreen() {
     }, [load, refetchStats, refetchUnread])
   )
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true)
-    load()
+    await load()
+    setRefreshing(false)
   }
 
   const activeJob = jobs.find(j => j.status === "in-progress")

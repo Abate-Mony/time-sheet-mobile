@@ -32,25 +32,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
 import { requestAccountDeletion } from "@/utils/api-request-functions";
-import customFetch from "@/utils/customFetch";
+import { workerDashboardstats } from "@/utils/workerDashboardStats";
 import type { User } from "@/utils/types";
 import type { WorkerDashboardStats } from "../../../utils/types/workerType.ts";
 
 // replace this with your real auth context
 import { useAuth } from "@/context/AuthContext";
-
-export const workerDashboardstats = () => ({
-  queryKey: ["worker-dashboard-stats"],
-
-  queryFn: async () => {
-    const { data } =
-      await customFetch.get<WorkerDashboardStats>(
-        "/workers/stats"
-      );
-
-    return data;
-  },
-});
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -66,7 +53,8 @@ export default function ProfileScreen() {
 
   const {
     data,
-    isLoading,
+    isError,
+    isRefetching,
     refetch,
   } = useQuery(
     workerDashboardstats()
@@ -80,30 +68,6 @@ export default function ProfileScreen() {
       refetch();
     }, [refetch])
   );
-
-  if (isLoading || !data) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <View style={styles.loading}>
-          <Text style={styles.loadingText}>
-            Loading profile...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const {
-    jobStats,
-    monthly,
-    totalJobs,
-  } = data;
-
-  const jobCompleted =
-    Object.values(jobStats as Record<string, number>).reduce<number>(
-      (acc, next) => acc + Number(next),
-      0
-    );
 
   const handleLogout = () => {
     Alert.alert(
@@ -151,10 +115,29 @@ export default function ProfileScreen() {
     );
   };
 
+  // Never block the screen on the stats. The profile details (name, photo…)
+  // come from the user saved at login, and the stats come from the offline
+  // cache when there's no network (saved at login — see
+  // utils/prefetchAfterLogin.ts). If there are still no stats — server
+  // unreachable, a bad session — the numbers show "—" and the menu and
+  // Log out stay reachable. (Waiting for the stats used to trap people on
+  // "Loading profile..." with no way to sign out.)
+  const hasStats = !!data;
+  const jobStats: Partial<WorkerDashboardStats["jobStats"]> = data?.jobStats ?? {};
+  const monthly: Partial<WorkerDashboardStats["monthly"]> = data?.monthly ?? {};
+  const statValue = (value: number | undefined) => (hasStats ? value ?? 0 : "—");
+
+  const jobCompleted = hasStats
+    ? Object.values(jobStats as Record<string, number>).reduce<number>(
+      (acc, next) => acc + Number(next),
+      0
+    )
+    : undefined;
+
   const stats = [
     {
       label: "Total Jobs",
-      value: jobCompleted,
+      value: statValue(jobCompleted),
       sub: "this month",
       icon: CheckCircle2,
       color: "#059669",
@@ -163,7 +146,7 @@ export default function ProfileScreen() {
 
     {
       label: "Job Completed",
-      value: jobStats.completed,
+      value: statValue(jobStats.completed),
       sub: "this month",
       icon: Clock,
       color: "#2563EB",
@@ -172,7 +155,7 @@ export default function ProfileScreen() {
 
     {
       label: "Job Decline",
-      value: jobStats.declined,
+      value: statValue(jobStats.declined),
       sub: "this month",
       icon: Clock,
       color: "#2563EB",
@@ -181,8 +164,7 @@ export default function ProfileScreen() {
 
     {
       label: "Job Inprogress",
-      value:
-        jobStats["in-progress"],
+      value: statValue(jobStats["in-progress"]),
       sub: "this month",
       icon: Clock,
       color: "#2563EB",
@@ -191,7 +173,7 @@ export default function ProfileScreen() {
 
     {
       label: "Job Pending",
-      value: jobStats.pending,
+      value: statValue(jobStats.pending),
       sub: "this month",
       icon: Clock,
       color: "#2563EB",
@@ -200,7 +182,7 @@ export default function ProfileScreen() {
 
     {
       label: "Job Accepted",
-      value: jobStats.accepted,
+      value: statValue(jobStats.accepted),
       sub: "this month",
       icon: Clock,
       color: "#2563EB",
@@ -351,6 +333,26 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Stats couldn't load and nothing is saved — say so, rather than
+            showing zeros as if they were real. */}
+        {!hasStats && isError && (
+          <View style={styles.statsNotice}>
+            <View style={styles.flex1}>
+              <Text style={styles.statsNoticeTitle}>Couldn&apos;t load your stats</Text>
+              <Text style={styles.statsNoticeText}>
+                Your hours and earnings will show once we can reach the server.
+              </Text>
+            </View>
+            <Pressable
+              style={[styles.retryButton, isRefetching && { opacity: 0.6 }]}
+              disabled={isRefetching}
+              onPress={() => { refetch() }}
+            >
+              <Text style={styles.retryText}>{isRefetching ? "Trying…" : "Try again"}</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Earnings */}
         <Pressable
           style={styles.earningsCard}
@@ -375,13 +377,15 @@ export default function ProfileScreen() {
                   styles.earningsValue
                 }
               >
-                £{monthly.earnings}
+                {hasStats ? `£${monthly.earnings ?? 0}` : "—"}
               </Text>
 
               <View style={styles.earningsBadgeRow}>
                 <ShieldCheck size={12} color="#6EE7B7" />
                 <Text style={styles.earningsBadgeText}>
-                  {jobStats.completed} job{jobStats.completed === 1 ? "" : "s"} completed
+                  {hasStats
+                    ? `${jobStats.completed ?? 0} job${jobStats.completed === 1 ? "" : "s"} completed`
+                    : "Stats unavailable"}
                 </Text>
               </View>
             </View>
@@ -417,10 +421,7 @@ export default function ProfileScreen() {
                   styles.earningStatValue
                 }
               >
-                {monthly.hoursWorked?.toFixed(
-                  1
-                )}
-                h
+                {hasStats ? `${(monthly.hoursWorked ?? 0).toFixed(1)}h` : "—"}
               </Text>
             </View>
 
@@ -442,7 +443,7 @@ export default function ProfileScreen() {
                   styles.earningStatValue
                 }
               >
-                {jobStats.completed}
+                {statValue(jobStats.completed)}
               </Text>
             </View>
 
@@ -464,8 +465,7 @@ export default function ProfileScreen() {
                   styles.earningStatValue
                 }
               >
-                {monthly.averagePayRate ||
-                  0}
+                {statValue(monthly.averagePayRate)}
               </Text>
             </View>
           </View>
@@ -682,16 +682,27 @@ const styles =
       paddingBottom: 32,
     },
 
-    loading: {
-      flex: 1,
+    statsNotice: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: "#FDE68A",
+      backgroundColor: "#FFFBEB",
+    },
+    statsNoticeTitle: { fontSize: 14, fontWeight: "700", color: "#92400E" },
+    statsNoticeText: { fontSize: 12, color: "#A16207", marginTop: 2, lineHeight: 17 },
+    retryButton: {
+      height: 36,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      backgroundColor: "#1E3A5F",
       alignItems: "center",
       justifyContent: "center",
     },
-
-    loadingText: {
-      color: "#94A3B8",
-      fontSize: 14,
-    },
+    retryText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
 
     profileCard: {
       backgroundColor: "#FFFFFF",

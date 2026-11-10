@@ -1,9 +1,10 @@
 import { useRouter } from "expo-router"
-import { Bell, ChevronLeft, RefreshCw, ShieldCheck } from "lucide-react-native"
+import { Bell, ChevronLeft, LogOut, RefreshCw, ShieldCheck, UserRound } from "lucide-react-native"
 import { useCallback, useEffect, useState } from "react"
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
+import { useAuth } from "@/context/AuthContext"
 import { queryClient } from "@/lib/queryClient"
 import { disableAppLock, enableAppLock, isAppLockEnabled, type AppLockAvailability } from "@/services/appLock"
 import {
@@ -33,6 +34,7 @@ function timeAgo(iso: string): string {
 
 export default function SettingsScreen() {
   const router = useRouter()
+  const { logout } = useAuth()
 
   const [shiftEndAlert, setShiftEndAlert] = useState<boolean | null>(null)
   const [appLock, setAppLock] = useState<boolean | null>(null)
@@ -89,6 +91,26 @@ export default function SettingsScreen() {
     }
     // auth_failed (wrong biometric / user cancelled) — no alert needed, the
     // system's own prompt already told them what happened.
+  }
+
+  const confirmLogout = () => {
+    Alert.alert(
+      "Log out?",
+      pendingCount > 0
+        ? `You have ${pendingCount} clock action${pendingCount === 1 ? "" : "s"} waiting to sync. They'll sync next time you log in on this device.`
+        : "You'll need to sign in again to use OnClockly.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log out",
+          style: "destructive",
+          onPress: async () => {
+            await logout()
+            router.replace("/login")
+          },
+        },
+      ]
+    )
   }
 
   const handleSyncNow = async () => {
@@ -176,6 +198,24 @@ export default function SettingsScreen() {
             )}
           </View>
         </View>
+
+        {/* Account — a second way out besides Profile, which can't render
+            its own log-out button if its data never loads (e.g. a stored
+            session from another install or server). */}
+        <View style={styles.sectionHeader}>
+          <UserRound size={13} color="#94A3B8" />
+          <Text style={styles.sectionTitle}>Account</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={confirmLogout}>
+            <View style={styles.rowText}>
+              <Text style={styles.logoutTitle}>Log out</Text>
+              <Text style={styles.rowSub}>Sign out of OnClockly on this device.</Text>
+            </View>
+            <LogOut size={18} color="#DC2626" />
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   )
@@ -210,6 +250,7 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   rowTitle: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
   rowSub: { fontSize: 12, color: "#94A3B8", marginTop: 3, lineHeight: 17 },
+  logoutTitle: { fontSize: 14, fontWeight: "700", color: "#DC2626" },
 
   syncButton: {
     height: 34,

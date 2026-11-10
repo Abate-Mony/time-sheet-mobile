@@ -1,14 +1,17 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { notificationLinkToRoute } from '@/hooks/useNotifications';
 import { queryClient } from '@/lib/queryClient';
-import { focusManager, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { persistOptions } from '@/lib/queryPersistence';
+import { focusManager, onlineManager, useQuery } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, useRouter } from 'expo-router';
-import { Lock } from 'lucide-react-native';
+import { Lock, WifiOff } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, AppState, Modal, Platform, Pressable, StyleSheet, Text, View, type AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { SuspendedOverlay } from "../components/SuspendedOverlay";
 import { useMyRestriction } from "../hooks/useMyRestriction";
@@ -22,7 +25,7 @@ import { authenticateToUnlock, isAppLockEnabled } from "../services/appLock";
 import { reconcileShiftEndAlert } from "../services/shiftEndAlert";
 import { syncOfflineClockQueue } from "../utils/offlineClockSync";
 import { subscribeToNotificationTaps } from "../utils/pushNotifications";
-import { activeWorkerJob } from './(tabs)/clock';
+import { activeWorkerJob } from '@/utils/activeWorkerJob';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
@@ -301,6 +304,41 @@ const lockStyles = StyleSheet.create({
   buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 });
 
+// Shown while the phone has no connection, so a worker knows the shifts on
+// screen are the last saved copy and may have changed since. Doesn't block
+// touches — everything that's cached stays usable underneath it.
+function OfflineBanner() {
+  const insets = useSafeAreaInsets();
+  const isOnline = useSyncExternalStore(
+    onlineManager.subscribe.bind(onlineManager),
+    () => onlineManager.isOnline()
+  );
+  if (isOnline) return null;
+
+  return (
+    <View pointerEvents="none" style={[offlineStyles.wrap, { top: insets.top + 4 }]}>
+      <View style={offlineStyles.pill}>
+        <WifiOff size={13} color="#FFFFFF" />
+        <Text style={offlineStyles.text}>Offline · showing saved info</Text>
+      </View>
+    </View>
+  );
+}
+
+const offlineStyles = StyleSheet.create({
+  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#334155',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  text: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+});
+
 function RootNavigator() {
   const { accessToken, loading } = useAuth();
   const colorScheme = useColorScheme();
@@ -313,7 +351,9 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <QueryClientProvider client={queryClient}>
+      {/* Restores the saved offline cache before queries run, then keeps it
+          saved — see lib/queryPersistence.ts for what's kept and why. */}
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <Stack>
         <Stack.Protected guard={!authenticated}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -333,7 +373,9 @@ function RootNavigator() {
       <AppStateFocusManager />
       {authenticated && <NotificationTapHandler />}
       {authenticated && <OfflineSyncManager />}
-      {authenticated && Platform.OS === "android" && <ActiveJobNotificationManager />}
+      {/* Both platforms: services/activeJobNotification.ts shows the
+          ongoing notification on Android and the Live Activity on iOS. */}
+      {authenticated && <ActiveJobNotificationManager />}
       {authenticated && <ShiftEndAlertManager />}
       {authenticated && <SuspendedAccountManager />}
       {authenticated && (
@@ -344,7 +386,8 @@ function RootNavigator() {
           contrast regardless of the OS theme — "auto" would pick white
           icons in dark mode, which vanish against that light background. */}
       <StatusBar style="dark" />
-            </QueryClientProvider>
+      {authenticated && <OfflineBanner />}
+      </PersistQueryClientProvider>
     </ThemeProvider>
   );
 }
