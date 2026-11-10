@@ -1,5 +1,5 @@
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
-import { useShiftStartGate } from "@/hooks/shiftgate";
+import { getShiftTimezoneInfo, useShiftStartGate } from "@/hooks/shiftgate";
 import { useCompanyPlan } from "@/hooks/useCompanyPlan";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -515,6 +515,8 @@ export default function JobDetailScreen() {
 
   const { user } = useAuth();
   const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job?.date, job?.startTime, job?.endTime, user?.companyTimezone);
+  // Shown under the times when the company's timezone isn't the phone's.
+  const timezoneInfo = getShiftTimezoneInfo(job?.date, job?.startTime, job?.endTime, user?.companyTimezone);
 
   const checklistMutation = useMutation({
     mutationFn: ({ itemId, done }: { itemId: string; done: boolean }) => toggleChecklistItem(id!, itemId, done),
@@ -762,6 +764,12 @@ export default function JobDetailScreen() {
                   </View>
                 )}
               </View>
+
+              {!!timezoneInfo && (
+                <Text style={styles.timezoneNote}>
+                  {timezoneInfo.zoneLabel} · {timezoneInfo.localStart}–{timezoneInfo.localEnd} your time
+                </Text>
+              )}
             </View>
 
             <View style={styles.infoList}>
@@ -1188,6 +1196,7 @@ const styles = StyleSheet.create({
   timeRow: { marginTop: 18, flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
   timePill: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.10)" },
   timeText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  timezoneNote: { marginTop: 10, color: "#BFDBFE", fontSize: 12, fontWeight: "600" },
   timeDivider: { width: 24, height: 1, backgroundColor: "rgba(255,255,255,0.22)" },
   priorityBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.14)" },
   priorityText: { color: "#FFFFFF", fontSize: 10, fontWeight: "700", textTransform: "capitalize" },

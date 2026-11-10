@@ -1,8 +1,10 @@
 
-import { openJob } from "@/utils/openJob";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
+import { openJob } from "@/utils/openJob";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Briefcase,
@@ -26,19 +28,23 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NoActiveShift } from "@/components/NoActiveShift";
-import customFetch from "@/utils/customFetch";
-import type { CreateJobForm, MyJobsResponse } from "@/utils/types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { activeWorkerJob } from "@/utils/activeWorkerJob";
 import {
   changeWorkerJobStaus,
   endWorkerBreak,
   startWorkerBreak,
-} from "../../utils/api-request-functions";
+} from "@/utils/api-request-functions";
+import customFetch from "@/utils/customFetch";
 import {
   formatSecondsAsClock,
   formatSecondsAsDuration,
-} from "../../utils/date";
-import { syncOfflineClockQueue } from "../../utils/offlineClockSync";
+} from "@/utils/date";
+import { syncOfflineClockQueue } from "@/utils/offlineClockSync";
+import type { CreateJobForm, MyJobsResponse } from "@/utils/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+// job.date is read as UTC midnight of the shift day (see the next-shift query).
+dayjs.extend(utc);
 
 type ClockState = "working" | "break" | "done";
 
@@ -64,16 +70,6 @@ interface WorkerJobWithDetails extends CreateJobForm {
     breaks?: WorkerBreak[];
   };
 }
-
-export const activeWorkerJob = () => ({
-  queryKey: ["active-job"],
-  queryFn: async (): Promise<
-    { success: true; job: null } | { job: CreateJobForm }
-  > => {
-    const { data } = await customFetch.get("/workers/active-job");
-    return data;
-  },
-});
 
 export default function ClockScreen() {
   const router = useRouter();
@@ -104,13 +100,36 @@ export default function ClockScreen() {
     return () => clearInterval(id);
   }, []);
 
+  // The next accepted shift that hasn't finished yet. `start` limits the
+  // server to jobs dated today or later (it filters job.date >= start), but
+  // it sorts by date only — not start time — and today's list can include a
+  // shift that's already over. So fetch a few and pick the earliest one
+  // still ahead, by date then start time.
   const { data: nextShiftData, refetch: refetchNextShift } = useQuery({
     queryKey: ["jobs", "accepted", "next"],
     queryFn: async () => {
       const { data } = await customFetch.get<MyJobsResponse>("/workers", {
-        params: { status: "accepted", limit: 1 },
+        params: {
+          status: "accepted",
+          start: dayjs().format("YYYY-MM-DD"),
+          limit: 20,
+        },
       });
-      return data.jobs[0] ?? null;
+
+      const now = dayjs();
+      const upcoming = data.jobs
+        .map(job => {
+          // job.date is UTC midnight of the shift's own day.
+          const day = dayjs.utc(job.date).format("YYYY-MM-DD");
+          const start = dayjs(`${day} ${job.startTime}`);
+          let end = dayjs(`${day} ${job.endTime}`);
+          if (!end.isAfter(start)) end = end.add(1, "day"); // overnight shift
+          return { job, start, end };
+        })
+        .filter(({ end }) => end.isAfter(now))
+        .sort((a, b) => a.start.valueOf() - b.start.valueOf());
+
+      return upcoming[0]?.job ?? null;
     },
     enabled: !isLoading && data?.job === null,
   });

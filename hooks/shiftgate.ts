@@ -32,6 +32,33 @@ function getShiftWindow(date: string, startTime: string, endTime: string, tz: st
     return { start, end }
 }
 
+// When the company's timezone isn't the phone's, a bare "19:13" is ambiguous
+// — the worker naturally reads it as their own local time. Returns what to
+// show alongside the shift times in that case ("Denver time", plus the same
+// window in the phone's time), or null when both clocks agree on that date
+// (zones with the same offset, e.g. Lagos/Douala, don't need a label).
+export function getShiftTimezoneInfo(
+    date: string | undefined,
+    startTime: string | undefined,
+    endTime: string | undefined,
+    companyTimezone: string | undefined
+): { zoneLabel: string; localStart: string; localEnd: string } | null {
+    if (!date || !startTime || !endTime) return null
+
+    const tz = companyTimezone ?? DEFAULT_TZ
+    const { start, end } = getShiftWindow(date, startTime, endTime, tz)
+    const deviceStart = start.tz(dayjs.tz.guess())
+    if (deviceStart.utcOffset() === start.utcOffset()) return null
+
+    // "America/Denver" → "Denver", "America/Los_Angeles" → "Los Angeles"
+    const city = tz.split("/").pop()?.replace(/_/g, " ") ?? tz
+    return {
+        zoneLabel: `${city} time`,
+        localStart: deviceStart.format("HH:mm"),
+        localEnd: end.tz(dayjs.tz.guess()).format("HH:mm"),
+    }
+}
+
 // A worker can only clock in once within `earlyWindowMinutes` of the shift's
 // scheduled start (or after it) — not the moment they accept the job, which
 // may be days ahead. Once the shift's scheduled end has also passed (e.g. it

@@ -1,4 +1,4 @@
-import { useShiftStartGate } from '@/hooks/shiftgate'
+import { getShiftTimezoneInfo, useShiftStartGate } from '@/hooks/shiftgate'
 import { useAuth } from '@/context/AuthContext'
 import { changeWorkerJobStaus } from '@/utils/api-request-functions'
 import { formatDate, formatDuration, formatTimeUntil } from '@/utils/date'
@@ -123,6 +123,7 @@ export default function JobCard(job: WorkerJob) {
     const router = useRouter()
     const { user } = useAuth()
     const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job.date, job.startTime, job.endTime, user?.companyTimezone)
+    const timezoneInfo = getShiftTimezoneInfo(job.date, job.startTime, job.endTime, user?.companyTimezone)
 
     useEffect(() => {
         if (!error) return
@@ -194,6 +195,7 @@ export default function JobCard(job: WorkerJob) {
                         <ClockIcon size={13} color="#64748B" />
                         <Text style={styles.metaText}>
                             {job.startTime}–{job.endTime}
+                            {!!timezoneInfo && ` ${timezoneInfo.zoneLabel} · ${timezoneInfo.localStart}–${timezoneInfo.localEnd} your time`}
                         </Text>
                     </View>
                     <View style={styles.metaRow}>
