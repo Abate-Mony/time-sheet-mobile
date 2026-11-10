@@ -48,7 +48,7 @@ export function BulkAcceptDialog({
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={() => state !== "loading" && onClose()}>
+    <Modal visible transparent animationType="fade" onRequestClose={() => { if (state !== "loading") onClose() }}>
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => state !== "loading" && onClose()} />
 

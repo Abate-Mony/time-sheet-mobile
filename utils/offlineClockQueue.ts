@@ -18,9 +18,9 @@ export interface QueuedClockAction {
   clockOutNote?: string;
 }
 
-// expo-file-system's newer class-based API (SDK 54+) — File.write()/.textSync()
-// are synchronous, unlike the classic FileSystem.readAsStringAsync/writeAsStringAsync
-// this replaced.
+// expo-file-system's class-based API — File.writeSync()/.textSync() (SDK 58 made
+// File.write() async, so the queue uses writeSync() to stay synchronous and
+// ordered, unlike the classic FileSystem.read/writeAsStringAsync it replaced).
 function queueFile(): File {
   return new File(Paths.document, "offline-clock-queue.json");
 }
@@ -40,7 +40,7 @@ function readQueueSync(): QueuedClockAction[] {
 
 function writeQueueSync(queue: QueuedClockAction[]): void {
   try {
-    queueFile().write(JSON.stringify(queue));
+    queueFile().writeSync(JSON.stringify(queue));
   } catch (err) {
     console.warn("Failed to persist offline clock queue:", err);
   }

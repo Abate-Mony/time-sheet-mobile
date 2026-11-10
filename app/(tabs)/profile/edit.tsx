@@ -200,7 +200,7 @@ export default function EditProfileScreen() {
           <Pressable
             style={[styles.saveButton, isSubmitting && styles.disabled]}
             disabled={isSubmitting}
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => { handleSubmit(onSubmit)() }}
           >
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#fff" />

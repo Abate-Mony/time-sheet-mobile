@@ -154,7 +154,7 @@ export default function EarningsScreen() {
       </View>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
-        refreshControl={<RefreshControl refreshing={isRefetching && !isPlaceholderData} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
+        refreshControl={<RefreshControl refreshing={isRefetching && !isPlaceholderData} onRefresh={() => { refetch() }} tintColor="#1E3A5F" />}
       >
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color="#1E3A5F" />

@@ -79,7 +79,7 @@ export default function OpenShiftDetailsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           contentContainerStyle={[styles.container, { paddingBottom: tabBarClearance }]}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch() }} />}
         >
           {header}
           {isLoading ? (
@@ -120,7 +120,7 @@ export default function OpenShiftDetailsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={[styles.container, { paddingBottom: tabBarClearance }]}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch() }} />}
       >
         {header}
 

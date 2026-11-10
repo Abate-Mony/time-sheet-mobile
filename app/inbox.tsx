@@ -91,10 +91,10 @@ export default function InboxScreen() {
           keyExtractor={n => n._id}
           renderItem={renderItem}
           contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch() }} tintColor="#1E3A5F" />}
           onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 16 }} color="#1E3A5F" /> : null}
+          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 16 }} color="#1E3A5F" /> : undefined}
           ListEmptyComponent={
             <View style={styles.empty}>
               {isError ? <AlertCircle size={20} color="#94A3B8" /> : <BellOff size={20} color="#94A3B8" />}

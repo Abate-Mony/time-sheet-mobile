@@ -1,4 +1,4 @@
-import { activeWorkerJob } from '@/app/(tabs)/clock'
+import { activeWorkerJob } from '@/utils/activeWorkerJob'
 import { Avatar } from '@/components/avatar'
 import { useTabBarClearance } from '@/hooks/useTabBarClearance'
 import customFetch from '@/utils/customFetch'
@@ -164,7 +164,7 @@ export default function ContactManagerScreen() {
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor="#1E3A5F" />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch() }} tintColor="#1E3A5F" />}
       >
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color="#1E3A5F" />
