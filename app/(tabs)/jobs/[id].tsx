@@ -18,6 +18,7 @@ import type { SingleJobResponse } from "@/utils/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import Toast from "react-native-toast-message";
 import {
   AlertCircle,
   AlertTriangle,
@@ -536,6 +537,15 @@ export default function JobDetailScreen() {
       if (!result.success) return;
 
       if (status === "in-progress") {
+        if (result.previousAssignmentClosed) {
+          // Not "approved" — just closed and handed to the manager, same
+          // framing as the push notification (closeAssignmentAutomatically.ts).
+          Toast.show({
+            type: "info",
+            text1: "Previous shift closed",
+            text2: "It was sent to your manager for review.",
+          });
+        }
         router.replace("/(tabs)/clock");
       } else {
         await refetch();

@@ -1,3 +1,5 @@
+/** @jsxImportSource react */
+
 import { openJob } from "@/utils/openJob";
 import customFetch from "@/utils/customFetch";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";

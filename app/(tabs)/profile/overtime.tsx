@@ -26,6 +26,11 @@ const STATUS_STYLES: Record<OvertimeStatus, { bg: string; text: string; label: s
 function OvertimeCard({ item }: { item: OvertimeItem }) {
   const statusStyle = STATUS_STYLES[item.overtimeStatus]
   const { Icon } = statusStyle
+  // The shift never got a real clock-out — the system force-closed it, and
+  // the recorded finish is only its best automatic guess, not a worker
+  // simply running long on their own clock-out. "Overtime" framing (and
+  // especially "+0" overtime) is misleading for this case.
+  const isAutoClosed = item.clockOutReason === "auto_closed"
 
   return (
     <View style={styles.card}>
@@ -42,13 +47,19 @@ function OvertimeCard({ item }: { item: OvertimeItem }) {
         </View>
       </View>
 
+      {isAutoClosed && (
+        <View style={styles.missedClockOutBadge}>
+          <Text style={styles.missedClockOutText}>Missed clock-out — manager review{item.overtimeStatus === 'pending' ? ' required' : 'ed'}</Text>
+        </View>
+      )}
+
       <View style={styles.minutesRow}>
         <View style={styles.minutesCol}>
           <Text style={styles.minutesLabel}>Worked</Text>
           <Text style={styles.minutesValue}>{formatDuration(item.actualMinutes)}</Text>
         </View>
         <View style={styles.minutesCol}>
-          <Text style={styles.minutesLabel}>Overtime</Text>
+          <Text style={styles.minutesLabel}>{isAutoClosed ? 'Extra time' : 'Overtime'}</Text>
           <Text style={styles.minutesValue}>+{formatDuration(item.overtimeMinutes)}</Text>
         </View>
         <View style={styles.minutesCol}>
@@ -202,6 +213,9 @@ const styles = StyleSheet.create({
   minutesLabel: { fontSize: 10, color: '#94A3B8' },
   minutesValue: { marginTop: 2, fontSize: 13, fontWeight: '700', color: '#0F172A' },
   minutesValuePositive: { color: '#047857' },
+
+  missedClockOutBadge: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FEF3C7', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'flex-start' },
+  missedClockOutText: { fontSize: 11, fontWeight: '700', color: '#92400E' },
 
   notesBox: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10 },
   notesText: { fontSize: 12, color: '#475569', lineHeight: 17 },

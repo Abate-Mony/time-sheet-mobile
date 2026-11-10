@@ -488,6 +488,11 @@ export interface OvertimeItem {
   overtimeReviewedAt: string | null
   managerNotes: string | null
   checkedOutAt: string | null
+  // "auto_closed" means the shift never got a real clock-out at all — the
+  // system force-closed it (closeAssignmentAutomatically.ts) and the
+  // recorded finish time is only ever its best automatic guess. Distinct
+  // from ordinary overtime (the worker's own clock-out just ran long).
+  clockOutReason: string | null
 }
 
 // ── Earnings (GET /workers/me/earnings) ──────────────────────────────────────

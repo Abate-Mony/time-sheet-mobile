@@ -1,4 +1,4 @@
-import { router } from "expo-router"
+import { router } from "expo-router";
 
 // Opens a job's details screen from anywhere in the app.
 //
@@ -12,3 +12,9 @@ import { router } from "expo-router"
 export function openJob(id: string) {
   router.navigate({ pathname: "/jobs/[id]", params: { id } }, { withAnchor: true })
 }
+// export function openJob(id: string) {
+//   router.push({
+//     pathname: "/jobs/[id]",
+//     params: { id },
+//   });
+// }

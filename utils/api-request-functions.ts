@@ -144,6 +144,10 @@ export const changeWorkerJobStaus = async (
   success: boolean;
   message?: string;
   queuedOffline?: boolean;
+  // true when clocking into this shift auto-resolved a previous one the
+  // worker never clocked out of (see workerController.ts's back-to-back
+  // handling) — that shift is now completed/pending review, not approved.
+  previousAssignmentClosed?: boolean;
 }> => {
   const needsLocation =
     status === "in-progress" ||
@@ -155,7 +159,7 @@ export const changeWorkerJobStaus = async (
     : undefined;
 
   try {
-    await customFetch.patch(
+    const { data } = await customFetch.patch(
       `/workers/${jobId}/status`,
       {
         status,
@@ -214,6 +218,7 @@ export const changeWorkerJobStaus = async (
 
     return {
       success: true,
+      previousAssignmentClosed: data?.previousAssignmentClosed === true,
     };
   } catch (err) {
     // Only clock-in/out are eligible for offline queueing — the two
