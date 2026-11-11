@@ -175,7 +175,12 @@ export const changeWorkerJobStaus = async (
         ...(opts?.release && {
           release: true,
         }),
-      }
+      },
+      // Weak signal can leave a request hanging forever instead of failing,
+      // which would keep the worker staring at a spinner and never reach
+      // the offline queue below. A timeout has no response, so it's treated
+      // like any other network failure and queued.
+      { timeout: 15_000 }
     );
 
     showSuccess(opts?.release ? "Shift released back to open shifts" : "Job updated successfully");
