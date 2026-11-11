@@ -15,7 +15,10 @@
       },
       "associatedDomains": [
         "applinks:app.onclockly.com"
-      ]
+      ],
+      "entitlements": {
+        "aps-environment": "development"
+      }
     },
     "android": {
       "package": "com.onclockly.app",
