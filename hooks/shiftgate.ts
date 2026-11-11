@@ -1,10 +1,9 @@
+import { deviceOffsetMs, zonedTimeToEpoch, zoneOffsetMs } from "@/utils/zonedTime"
 import dayjs from "dayjs"
 import utc from "dayjs/plugin/utc"
-import timezone from "dayjs/plugin/timezone"
 import { useEffect, useState } from "react"
 
 dayjs.extend(utc)
-dayjs.extend(timezone)
 
 const DEFAULT_EARLY_WINDOW_MINUTES = 30
 
@@ -26,8 +25,10 @@ function getShiftWindow(date: string, startTime: string, endTime: string, tz: st
     // anyone far enough behind UTC (e.g. California, where Apple's review
     // team is largely based), landing the whole window a day in the past.
     const dateStr = dayjs.utc(date).format("YYYY-MM-DD")
-    const start = dayjs.tz(`${dateStr} ${startTime}`, tz)
-    let end = dayjs.tz(`${dateStr} ${endTime}`, tz)
+    // Converted with utils/zonedTime.ts, not dayjs.tz — the timezone plugin
+    // gives wrong instants on Hermes (real iPhones), see that file.
+    const start = dayjs(zonedTimeToEpoch(dateStr, startTime, tz))
+    let end = dayjs(zonedTimeToEpoch(dateStr, endTime, tz))
     if (end.isBefore(start)) end = end.add(1, "day") // overnight shift
     return { start, end }
 }
@@ -47,15 +48,19 @@ export function getShiftTimezoneInfo(
 
     const tz = companyTimezone ?? DEFAULT_TZ
     const { start, end } = getShiftWindow(date, startTime, endTime, tz)
-    const deviceStart = start.tz(dayjs.tz.guess())
-    if (deviceStart.utcOffset() === start.utcOffset()) return null
+    try {
+        if (zoneOffsetMs(start.valueOf(), tz) === deviceOffsetMs(start.valueOf())) return null
+    } catch {
+        return null // unknown zone name — nothing reliable to label
+    }
 
     // "America/Denver" → "Denver", "America/Los_Angeles" → "Los Angeles"
     const city = tz.split("/").pop()?.replace(/_/g, " ") ?? tz
     return {
         zoneLabel: `${city} time`,
-        localStart: deviceStart.format("HH:mm"),
-        localEnd: end.tz(dayjs.tz.guess()).format("HH:mm"),
+        // Plain dayjs formats in the device's own timezone — exactly "your time".
+        localStart: start.format("HH:mm"),
+        localEnd: end.format("HH:mm"),
     }
 }
 
