@@ -3,6 +3,12 @@
     "name": "OnClockly",
     "slug": "inprn",
     "version": "1.1.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/525785cf-e72d-4c99-b86c-a0d2dd21f404"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onclockly",

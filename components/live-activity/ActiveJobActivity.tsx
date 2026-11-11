@@ -14,6 +14,7 @@
 // current. Only state changes (e.g. going into overtime) need an update().
 import { HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui'
 import {
+  activityBackgroundTint,
   font,
   foregroundStyle,
   frame,
@@ -40,7 +41,13 @@ const ActiveJobActivity = (props: ActiveJobActivityProps, environment: LiveActiv
   'widget'
   const accent = environment.isLuminanceReduced ? '#FFFFFF' : '#60A5FA'
   const warning = '#F59E0B'
-  const secondary = environment.colorScheme === 'dark' ? '#94A3B8' : '#64748B'
+  const isDark = environment.colorScheme === 'dark'
+  const secondary = isDark ? '#94A3B8' : '#CBD5E1'
+  // Translucent instead of the system's default opaque black, so the lock
+  // screen's glass/blur shows through like the notifications around it.
+  // Kept slightly tinted (not 'clear') so text stays readable on bright
+  // wallpapers; text below is light-on-dark in both schemes for that reason.
+  const glassTint = isDark ? '#0F172A55' : '#1E293B40'
 
   const checkedIn = new Date(props.checkedInAtMs)
   // Upper bound for a count-up timer — far enough out that no shift reaches it.
@@ -82,7 +89,11 @@ const ActiveJobActivity = (props: ActiveJobActivityProps, environment: LiveActiv
 
   return {
     banner: (
-      <VStack alignment="leading" spacing={8} modifiers={[padding({ all: 16 })]}>
+      <VStack
+        alignment="leading"
+        spacing={8}
+        modifiers={[padding({ all: 16 }), activityBackgroundTint(glassTint)]}
+      >
         <HStack spacing={8}>
           <Image systemName="clock.fill" color={statusColor} size={16} />
           <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(statusColor)]}>{statusLabel}</Text>
@@ -90,7 +101,7 @@ const ActiveJobActivity = (props: ActiveJobActivityProps, environment: LiveActiv
           {timer(22)}
         </HStack>
         <VStack alignment="leading" spacing={2}>
-          <Text modifiers={[font({ size: 16, weight: 'bold' })]}>{props.title}</Text>
+          <Text modifiers={[font({ size: 16, weight: 'bold' }), foregroundStyle('#FFFFFF')]}>{props.title}</Text>
           <Text modifiers={[font({ size: 13 }), foregroundStyle(secondary)]}>{props.subtitle}</Text>
         </VStack>
         {progressBar}
