@@ -12,6 +12,8 @@ import {
   withdrawOpenShiftClaim,
 } from "@/utils/api-request-functions";
 import customFetch from "@/utils/customFetch";
+import { findCachedJob } from "@/utils/findCachedJob";
+import dayjs from "dayjs";
 import { formatDate, formatDuration, formatTimeUntil } from "@/utils/date";
 import { buildMapUrl, MAP_SERVICES, type MapService } from "@/utils/mapLinks";
 import type { SingleJobResponse } from "@/utils/types";
@@ -504,14 +506,25 @@ export default function JobDetailScreen() {
     SecureStore.setItemAsync(PREFERRED_MAP_STORAGE_KEY, service);
   };
 
-  const { data: job, isLoading, isError, refetch } = useQuery({
+  // Show the job straight away from any list that already has it (jobs,
+  // Home, schedule, the active shift — all saved offline too), then fetch
+  // the full details. If that can't happen (offline) or fails, the saved copy
+  // stays on screen with a "may be out of date" notice instead of an error.
+  const cachedJob = useMemo(() => (id ? findCachedJob(id) : null), [id]);
+
+  const { data: job, isLoading, isError, fetchStatus, dataUpdatedAt, isRefetching, refetch } = useQuery({
     queryKey: ["job", id],
     queryFn: async () => {
       const { data } = await customFetch.get<SingleJobResponse>(`/workers/${id}`);
       return data.job;
     },
     enabled: !!id,
+    initialData: cachedJob?.job,
+    initialDataUpdatedAt: cachedJob?.updatedAt,
   });
+
+  const isOffline = fetchStatus === "paused";
+  const showingSavedCopy = !!job && (isOffline || isError);
 
   const { user } = useAuth();
   const { canStart, minutesUntilStart, hasExpired } = useShiftStartGate(job?.date, job?.startTime, job?.endTime, user?.companyTimezone);
@@ -710,14 +723,17 @@ export default function JobDetailScreen() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {isLoading ? (
+      {isLoading && !job ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#1E3A5F" />
         </View>
-      ) : isError || !job ? (
+      ) : !job ? (
+        // Only when there's no saved copy anywhere — otherwise the job shows.
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>Couldn&apos;t load this job.</Text>
-          <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.emptyText}>
+            {isOffline ? "You're offline and this job hasn't been saved yet." : "Couldn't load this job."}
+          </Text>
+          <Pressable style={styles.retryButton} onPress={() => { refetch() }}>
             <Text style={styles.retryButtonText}>Try again</Text>
           </Pressable>
         </View>
@@ -727,6 +743,28 @@ export default function JobDetailScreen() {
             <ChevronLeft size={17} color="#64748B" />
             <Text style={styles.backText}>Back</Text>
           </Pressable>
+
+          {showingSavedCopy && (
+            <View style={styles.staleBanner}>
+              <View style={styles.flex1}>
+                <Text style={styles.staleTitle}>
+                  {isOffline ? "You're offline" : "Couldn't refresh this job"}
+                </Text>
+                <Text style={styles.staleText}>
+                  Showing saved info{dataUpdatedAt ? ` from ${dayjs(dataUpdatedAt).format("D MMM, HH:mm")}` : ""} — it may have changed since.
+                </Text>
+              </View>
+              {!isOffline && (
+                <Pressable
+                  style={[styles.staleRetry, isRefetching && styles.disabled]}
+                  disabled={isRefetching}
+                  onPress={() => { refetch() }}
+                >
+                  <Text style={styles.staleRetryText}>{isRefetching ? "Trying…" : "Try again"}</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           <View style={styles.heroCard}>
             <View style={[styles.heroTop, { backgroundColor: heroColor }]}>
@@ -1288,6 +1326,11 @@ const styles = StyleSheet.create({
   mapServiceChipTextActive: { color: "#FFFFFF" },
   retryButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: "#1E3A5F" },
   retryButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  staleBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB" },
+  staleTitle: { fontSize: 13, fontWeight: "700", color: "#92400E" },
+  staleText: { fontSize: 12, color: "#A16207", marginTop: 2, lineHeight: 17 },
+  staleRetry: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#FDE68A" },
+  staleRetryText: { fontSize: 12, fontWeight: "700", color: "#92400E" },
   emptyText: { color: "#94A3B8", fontSize: 14 },
   disabled: { opacity: 0.55 },
   flex1: { flex: 1 },
