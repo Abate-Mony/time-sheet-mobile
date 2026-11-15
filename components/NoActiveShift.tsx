@@ -42,7 +42,8 @@ export function NoActiveShift({ nextShift }: { nextShift?: NextShift }) {
 
           <Text style={styles.nextShiftTitle}>{nextShift.title}</Text>
           <Text style={styles.nextShiftMeta}>
-            {formatDate(nextShift.date)} · {nextShift.startTime} · {nextShift.location}
+            {/* date is UTC midnight of the shift day — use its own Y-M-D so phones behind UTC don't show the day before */}
+            {formatDate(nextShift.date?.slice(0, 10))} · {nextShift.startTime} · {nextShift.location}
           </Text>
 
           <View style={styles.viewShiftRow}>
